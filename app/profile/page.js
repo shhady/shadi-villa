@@ -99,7 +99,7 @@ export default function Profile() {
         <div className="text-center">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold text-red-500 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You don't have permission to view this profile.</p>
+          <p className="text-gray-600 mb-4">You don&apos;t have permission to view this profile.</p>
           <button
             onClick={() => router.back()}
             className="mt-2 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -127,7 +127,7 @@ export default function Profile() {
                   <div className="flex flex-wrap items-center justify-between">
                     <div>
                       <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        {profileUser?.name}'s Profile
+                        {profileUser?.name}&apos;s Profile
                       </h3>
                       <p className="mt-1 max-w-2xl text-sm text-gray-500">
                         {profileUser?.email} • {profileUser?.role.charAt(0).toUpperCase() + profileUser?.role.slice(1)}
