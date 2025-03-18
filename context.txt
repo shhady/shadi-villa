@@ -1,0 +1,22 @@
+Project: Daily Villa & Pool Rental Management System
+
+Description:
+A web-based platform for managing daily villa and pool rentals. The system includes authentication, booking management, and an approval process.
+
+Technologies:
+- Frontend: Next.js + TailwindCSS
+- Backend: Node.js + Express
+- Database: MongoDB + Mongoose
+- Authentication: Basic JWT with bcrypt password encryption
+
+Features:
+1. Authentication (Sign-up/Login) with role-based access (Admin/Agent).
+2. Agents can view availability, make reservations, and submit transactions.
+3. Admins can approve/reject bookings, manage reservations, and handle users.
+4. Simple UI with a calendar-based booking system.
+5. Secure password storage with bcrypt.
+
+Future Enhancements:
+- Payment integration
+- Notifications via Email/SMS
+- Multi-property rental support
