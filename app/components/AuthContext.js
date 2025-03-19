@@ -169,6 +169,7 @@ export function AuthProvider({ children }) {
     return user.role === role;
   };
 
+  const userRole = user?.role
   // Get auth token
   const getToken = () => {
     // First try to get the token from the user state
@@ -205,7 +206,8 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     hasRole,
     getToken,
-    api  // Export the axios instance with correct baseURL
+    api,
+    userRole
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

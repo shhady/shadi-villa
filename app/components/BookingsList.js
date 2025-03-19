@@ -40,7 +40,8 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 agentData[agentId] = response.data.data.name;
               }
             } catch (error) {
-              console.error(`Error fetching agent data for ID ${agentId}:`, error);
+              console.log('agent was removed')
+              // console.error(`Error fetching agent data for ID ${agentId}:`, error);
             }
           }
         }

@@ -1,7 +1,21 @@
+'use client'
 import Image from 'next/image';
 import Link from 'next/link';
+import { useAuth } from './components/AuthContext';
 
 export default function Home() {
+  const { isAuthenticated, hasRole, loading,userRole } = useAuth();
+
+  const authenticated = isAuthenticated()
+  const role = userRole
+  console.log(role)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
   return (
     <div className="bg-white">
       {/* Hero Section */}
@@ -16,7 +30,12 @@ export default function Home() {
                 A comprehensive platform for managing villa and pool rentals. 
                 Book, manage, and track your reservations with ease.
               </p>
-              <div className="mt-10 flex items-center gap-x-6">
+             {authenticated && role ? (<div className="mt-10 flex items-center gap-x-6"><Link
+                  href={`/dashboard/${role}`}
+                  className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                >
+                  Dashboard
+                </Link></div>):( <div className="mt-10 flex items-center gap-x-6">
                 <Link
                   href="/auth/register"
                   className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
@@ -26,7 +45,8 @@ export default function Home() {
                 <Link href="/auth/login" className="text-sm font-semibold leading-6 text-gray-900">
                   Login <span aria-hidden="true">→</span>
                 </Link>
-              </div>
+              </div>)} 
+            
             </div>
           </div>
           <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mt-0 lg:mr-0 lg:max-w-none lg:flex-none xl:ml-32">
