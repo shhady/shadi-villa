@@ -488,75 +488,70 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 </button>
               </div>
               
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Booking ID</h4>
-                  <p className="mt-1">{detailsBooking._id}</p>
-                </div>
+              <div className="mt-4 grid grid-cols-1  gap-4">
+              
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                
+              <div className='flex justify-start items-center gap-4'>
+                  <h4 className=" font-medium text-gray-500">Status</h4>
                   <p className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
                     {detailsBooking.status.charAt(0).toUpperCase() + detailsBooking.status.slice(1)}
                   </p>
                 </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Guest Name</h4>
-                  <p className="mt-1">{detailsBooking.guestName}</p>
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className=" font-medium text-gray-500">Rental Type:</h4>
+                  <p className="font-bold">{getRentalTypeDisplay(detailsBooking.rentalType)}</p>
+                </div>
+            
+               
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className=" font-medium text-gray-500">Check-in: </h4>
+                  <p className="font-bold">{formatDate(detailsBooking.startDate)}</p>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Phone Number</h4>
-                  <p className="mt-1">{detailsBooking.phoneNumber || "Not provided"}</p>
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className=" font-medium text-gray-500">Check-out:</h4>
+                  <p className="font-bold">{formatDate(detailsBooking.endDate)}</p>
+                </div>
+                     
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className="text-sm font-medium text-gray-500">Duration:</h4>
+                  <p className="font-bold">{detailsBooking.duration} nights</p>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Rental Type</h4>
-                  <p className="mt-1">{getRentalTypeDisplay(detailsBooking.rentalType)}</p>
+
+                <div className='flex justify-start items-center gap-2 border-t-1 border-gray-200 pt-4'>
+                  <h4 className="text-sm font-medium text-gray-500">Guest Name:</h4>
+                  <p className="font-bold">{detailsBooking.guestName}</p>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Duration</h4>
-                  <p className="mt-1">{detailsBooking.duration} days</p>
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className="text-sm font-medium text-gray-500">Phone:</h4>
+                  <p className="font-bold">{detailsBooking.phoneNumber || "Not provided"}</p>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Check-in Date</h4>
-                  <p className="mt-1">{formatDate(detailsBooking.startDate)}</p>
+               
+                
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className="text-sm font-medium text-gray-500">Guests:</h4>
+                  <p className="font-bold"> {detailsBooking.adults || 0} adults, {detailsBooking.children || 0} children</p>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Check-out Date</h4>
-                  <p className="mt-1">{formatDate(detailsBooking.endDate)}</p>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Number of Guests</h4>
-                  <p className="mt-1">
-                    {safe(detailsBooking, 'adults') || safe(detailsBooking, 'children') ? 
-                      `${(safe(detailsBooking, 'adults', 0) + safe(detailsBooking, 'children', 0))} guests (${safe(detailsBooking, 'adults', 0)} adults${safe(detailsBooking, 'children', 0) > 0 ? `, ${safe(detailsBooking, 'children', 0)} children` : ''})` 
-                      : 
-                      `${safe(detailsBooking, 'guestCount', 0)} guests`
-                    }
-                  </p>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Amount</h4>
-                  <p className="mt-1">₪ {detailsBooking.amount}</p>
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className="text-sm font-medium text-gray-500">Amount:</h4>
+                  <p className="font-bold">₪ {detailsBooking.amount}</p>
                 </div>
                 
                 {hasRole('admin') && detailsBooking.agentId && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Created By</h4>
-                    <p className="mt-1">{agentNames[detailsBooking.agentId] || "Unknown Agent"}</p>
+                  <div className='flex justify-start items-center gap-2 border-t-1 border-gray-200 pt-6'>
+                    <h4 className="text-sm font-medium text-gray-500">Created By:</h4>
+                    <p className="">{agentNames[detailsBooking.agentId] || "Unknown Agent"}</p>
                   </div>
                 )}
                 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Created At</h4>
-                  <p className="mt-1">{new Date(detailsBooking.createdAt).toLocaleString()}</p>
+                <div className='flex justify-start items-center gap-2'>
+                  <h4 className="text-sm font-medium text-gray-500">Created At:</h4>
+                  <p className="">{new Date(detailsBooking.createdAt).toLocaleString()}</p>
                 </div>
                 
                 {detailsBooking.status === 'rejected' && detailsBooking.rejectionReason && (
@@ -577,7 +572,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
               <div className="mt-6 flex justify-end">
                 {/* Admin action buttons in details modal */}
                 {hasRole('admin') && (
-                  <div className="flex space-x-2 mr-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mr-auto">
                     {detailsBooking.status !== 'approved' && (
                       <button
                         onClick={() => {
@@ -623,16 +618,17 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                     >
                       Delete
                     </button>
-                  </div>
-                )}
-                
-                <button
+                    <button
                   type="button"
                   onClick={() => setShowDetailsModal(false)}
                   className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Close
                 </button>
+                  </div>
+                )}
+                
+                
               </div>
             </div>
           </div>

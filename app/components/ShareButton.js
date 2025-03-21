@@ -13,8 +13,8 @@ export default function ShareButton({ title, description, iconOnly = false }) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: title || 'Villa c21',
-          text: description || 'Check out this booking on Villa c21',
+          title: title || 'Villa C21',
+          text: description || 'Check out this booking on Villa C21',
           url: url,
         });
       } catch (error) {

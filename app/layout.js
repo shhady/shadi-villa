@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Villa c21 - Daily Villa & Pool Rental",
+  title: "Villa C21 - Daily Villa & Pool Rental",
   description: "Management system for daily villa and pool rentals",
 };
 
