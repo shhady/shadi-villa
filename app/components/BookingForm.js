@@ -336,59 +336,10 @@ const BookingForm = ({ onBookingCreated }) => {
       return false;
     }
     
-    // Check if this date is an end date of any booking (excluding rejected bookings)
+    // Check if this date is the end date of a villa+pool booking
     // End dates of villa+pool bookings should be available for new bookings to start
-    // Pool booking end dates should NOT be available (they occupy the full day)
-    const isEndDateOfExistingBooking = (date) => {
-      // Check through bookings first
-      const isNonRejectedBookingEndDate = bookings.some(booking => {
-        // Skip rejected bookings completely
-        if (booking.status === 'rejected') return false;
-        
-        // Only for villa bookings - not for pool bookings which take the whole day
-        if (booking.rentalType !== 'villa_pool') return false;
-        
-        const endDate = new Date(booking.endDate);
-        endDate.setHours(0, 0, 0, 0);
-        return endDate.getTime() === date.getTime();
-      });
-      
-      if (isNonRejectedBookingEndDate) return true;
-      
-      // Also check villa end dates from API, but verify they're not from rejected bookings
-      // and not from pool bookings (which take the whole day)
-      if (unavailableDates.villaEndDates && unavailableDates.villaEndDates.length > 0) {
-        const isEndDateOfNonRejectedBooking = unavailableDates.villaEndDates.some(endDate => {
-          const normalizedEndDate = new Date(endDate);
-          normalizedEndDate.setHours(0, 0, 0, 0);
-          
-          if (normalizedEndDate.getTime() !== date.getTime()) return false;
-          
-          // End date matches, verify it's not from a rejected booking
-          const isRejectedBookingEndDate = bookings.some(booking => 
-            booking.status === 'rejected' && 
-            new Date(booking.endDate).setHours(0, 0, 0, 0) === date.getTime()
-          );
-          
-          // Also verify it's not from a pool booking
-          const isPoolBookingEndDate = bookings.some(booking => 
-            booking.rentalType === 'pool' && 
-            new Date(booking.endDate).setHours(0, 0, 0, 0) === date.getTime()
-          );
-          
-          // Return true only for non-rejected, non-pool booking end dates
-          return !isRejectedBookingEndDate && !isPoolBookingEndDate;
-        });
-        
-        return isEndDateOfNonRejectedBooking;
-      }
-      
-      return false;
-    };
-    
-    // If the date is an end date of a non-rejected, non-pool booking, it's available for new bookings
-    if (isEndDateOfExistingBooking(dateToCheck)) {
-      return false;
+    if (isCheckoutDay(date)) {
+      return false; // Always allow booking on checkout days
     }
     
     if (rentalType === 'pool') {
@@ -756,10 +707,19 @@ const BookingForm = ({ onBookingCreated }) => {
     }
     
     // First check for pool bookings - they take priority over checkout day status
-    if (hasPoolBooking(date)) {
-      // Check if it's a pending pool booking
-      if (isDatePending(date)) {
-        return `bg-orange-100 ${adminClickableClass}`;
+    const poolBooking = bookings.find(booking => {
+      if (booking.status !== 'rejected' && booking.rentalType === 'pool') {
+        const bookingDate = new Date(booking.startDate);
+        bookingDate.setHours(0, 0, 0, 0);
+        return bookingDate.getTime() === date.getTime();
+      }
+      return false;
+    });
+    
+    if (poolBooking) {
+      // Check status of the pool booking
+      if (poolBooking.status === 'pending') {
+        return `bg-orange-100 ${adminClickableClass}`; // Pending pools should be orange/yellow
       }
       // Must be an approved pool booking
       return `bg-blue-100 ${adminClickableClass}`;
@@ -903,6 +863,46 @@ const BookingForm = ({ onBookingCreated }) => {
         handleViewBookingDetails(bookingOnDate);
         return;
       }
+    }
+    
+    // If date is a checkout day, it's always available for booking
+    if (isCheckoutDay(date)) {
+      // Allow booking on checkout days
+      if (formData.rentalType === 'pool') {
+        setFormData({
+          ...formData,
+          startDate: date,
+          endDate: date,
+          duration: 1
+        });
+        
+        // Update amount
+        calculateAmount('pool', 1);
+      } else {
+        let newEndDate = formData.endDate;
+        
+        // If selected date is after current end date, adjust end date to be one day later
+        if (date >= formData.endDate) {
+          const nextDay = new Date(date);
+          nextDay.setDate(date.getDate() + 1);
+          newEndDate = nextDay;
+        }
+        
+        // Calculate new duration
+        const timeDiff = newEndDate.getTime() - date.getTime();
+        const newDuration = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        setFormData({
+          ...formData,
+          startDate: date,
+          endDate: newEndDate,
+          duration: newDuration
+        });
+        
+        // Update amount
+        calculateAmount('villa_pool', newDuration);
+      }
+      return;
     }
     
     // Check if date is unavailable for the selected rental type
