@@ -1039,7 +1039,7 @@ const BookingForm = ({ onBookingCreated }) => {
             <p>
               <span className="font-semibold">Note:</span> Checkout/Check-in days (highlighted with dashed borders) are dates when pending or approved Villa+Pool bookings end and new ones can begin. 
               Villa checkout is at 12 PM, allowing new guests to check in on the same day.
-              Dates won't be marked as checkout/check-in days if they're already the start date of another booking or have a Pool booking.
+              Dates won&apos;t be marked as checkout/check-in days if they&apos;re already the start date of another booking or have a Pool booking.
               Rejected bookings are treated as fully available dates with no special indicators.
             </p>
             

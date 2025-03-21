@@ -37,7 +37,7 @@ const NavBar = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="text-white text-xl font-bold">
-                Shadi Villa
+              Villa c21
               </Link>
             </div>
           </div>
