@@ -120,9 +120,10 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
   function getBookingDisplay(booking) {
     if (booking.rentalType === 'pool') {
       // For pool bookings, display start date with end date one day later
+      // But note that pool bookings are only for a single day
       return {
         dateDisplay: `${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}`,
-        durationDisplay: '1 day'
+        durationDisplay: '1 day (pool only)'
       };
     } else {
       // For villa bookings, show date range and nights
@@ -544,7 +545,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                      
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Duration:</h4>
-                  <p className="font-bold">{detailsBooking.rentalType === 'pool' ? '1 day' : `${detailsBooking.duration} ${detailsBooking.duration === 1 ? 'night' : 'nights'}`}</p>
+                  <p className="font-bold">{detailsBooking.rentalType === 'pool' ? '1 day (pool only)' : `${detailsBooking.duration} ${detailsBooking.duration === 1 ? 'night' : 'nights'}`}</p>
                 </div>
                 
 

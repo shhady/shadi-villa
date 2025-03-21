@@ -174,10 +174,10 @@ const BookingForm = ({ onBookingCreated }) => {
           ...formData,
           rentalType: value,
           endDate: nextDay,
-          duration: 1
+          duration: 1  // Always 1 day for pool bookings
         });
         
-        // Update amount based on type and duration
+        // Update amount based on pool rate for 1 day only
         calculateAmount(value, 1);
         return;
       }
@@ -242,10 +242,10 @@ const BookingForm = ({ onBookingCreated }) => {
           ...formData,
           startDate: selectedDate,
           endDate: nextDay,
-          duration: 1
+          duration: 1  // Always 1 day for pool bookings
         });
         
-        // Update amount
+        // Update amount based on pool rate for 1 day
         calculateAmount('pool', 1);
       } else {
         // For villa rentals
@@ -942,11 +942,14 @@ const BookingForm = ({ onBookingCreated }) => {
     if (isCheckoutDay(date)) {
       // Allow booking on checkout days
       if (formData.rentalType === 'pool') {
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
         setFormData({
           ...formData,
           startDate: date,
-          endDate: date,
-          duration: 1
+          endDate: nextDay,
+          duration: 1 // Always 1 day for pool bookings
         });
         
         // Update amount
@@ -999,10 +1002,10 @@ const BookingForm = ({ onBookingCreated }) => {
         ...formData,
         startDate: date,
         endDate: nextDay,
-        duration: 1
+        duration: 1  // Always 1 day for pool bookings
       });
       
-      // Update amount
+      // Update amount based on pool rate for 1 day
       calculateAmount('pool', 1);
     } else {
       // For villa bookings, set start date and adjust end date if needed
@@ -1170,7 +1173,7 @@ const BookingForm = ({ onBookingCreated }) => {
               className={`h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
             />
             {formData.rentalType === 'pool' && (
-              <p className="text-sm text-gray-500 mt-1">For pool bookings, checkout is automatically set to the day after check-in.</p>
+              <p className="text-sm text-gray-500 mt-1">Pool bookings are for a single day only. Checkout is automatically set to the day after check-in.</p>
             )}
           </div>
         </div>

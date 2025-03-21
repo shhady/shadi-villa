@@ -157,7 +157,8 @@ export async function POST(request) {
     console.log('UTC start date to be stored:', bookingStartDate.toISOString());
     
     // For pool bookings, ensure the end date is one day after start date
-    // This prevents issues with date display showing end date as day before start date
+    // Pool bookings occupy only a single day, but we set the end date to the next day
+    // to maintain consistent checkout-day booking logic with villa bookings
     let bookingEndDate;
     let bookingDuration;
     
@@ -167,7 +168,7 @@ export async function POST(request) {
       const nextDay = new Date(bookingStartDate);
       nextDay.setUTCDate(nextDay.getUTCDate() + 1);
       bookingEndDate = nextDay;
-      bookingDuration = 1;
+      bookingDuration = 1; // Pool bookings are always for 1 day
       console.log('Pool booking - setting end date to one day after start date:', bookingEndDate.toISOString());
       
       // Ensure both startDate and endDate have consistent UTC time
@@ -256,7 +257,7 @@ export async function POST(request) {
     // Special case: Allow booking pool on end date of villa_pool booking
     if (rentalType === 'pool') {
       // Check if this date is specifically the end date of a villa booking
-      const normalizedDate = new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0));
+      const normalizedDate = new Date(new Date(bookingStartDate).setUTCHours(0, 0, 0, 0));
       const isEndDateOfVillaBooking = await Booking.findOne({
         rentalType: 'villa_pool',
         status: { $in: ['approved', 'pending'] },
