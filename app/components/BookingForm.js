@@ -560,13 +560,22 @@ const BookingForm = ({ onBookingCreated }) => {
         return;
       }
       
+      // Create UTC dates to ensure consistent date handling across environments
+      const toUtcDate = (date) => {
+        return new Date(Date.UTC(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate()
+        ));
+      };
+      
       // Create a copy of the form data with normalized dates to prevent time-related issues
       // Calculate total guest count from adults + children
       const normalizedFormData = {
         ...formData,
         guestCount: formData.adults + formData.children, // Calculate total guest count
-        startDate: new Date(new Date(formData.startDate).setHours(0, 0, 0, 0)),
-        endDate: new Date(new Date(formData.endDate).setHours(0, 0, 0, 0))
+        startDate: toUtcDate(new Date(formData.startDate)),
+        endDate: toUtcDate(new Date(formData.endDate))
       };
       
       console.log('Submitting booking with token:', token.substring(0, 10) + '...');
