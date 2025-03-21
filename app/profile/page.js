@@ -168,7 +168,7 @@ function ProfileContent() {
                     Total Amount
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    ${stats?.totalAmount || 0}
+                  ₪{stats?.totalAmount || 0}
                   </dd>
                 </div>
               </div>
@@ -180,7 +180,7 @@ function ProfileContent() {
                     Approved Revenue
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-green-600">
-                    ${stats?.approvedAmount || 0}
+                    ₪{stats?.approvedAmount || 0}
                   </dd>
                 </div>
               </div>

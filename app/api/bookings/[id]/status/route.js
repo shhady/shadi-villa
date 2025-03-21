@@ -123,6 +123,10 @@ export async function PATCH(request, { params }) {
     // Add additional message for rejections
     if (status === 'rejected') {
       responseMessage += '. The dates are now available for other bookings.';
+    } else if (previousStatus === 'rejected' && status === 'approved') {
+      responseMessage += '. Note that this may create conflicts with other bookings if these dates were rebooked.';
+    } else if (previousStatus === 'rejected' && status === 'pending') {
+      responseMessage += '. Note that this may create conflicts with other bookings if these dates were rebooked.';
     }
     
     return NextResponse.json({

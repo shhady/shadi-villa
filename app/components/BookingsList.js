@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
+import ShareButton from './ShareButton';
 
 const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
   const { hasRole, getToken, api } = useAuth();
@@ -12,6 +13,52 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [agentNames, setAgentNames] = useState({});
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsBooking, setDetailsBooking] = useState(null);
+  const [lastStatusChange, setLastStatusChange] = useState(null);
+
+  // Add a utility function to safely access booking properties with improved type handling
+  const safe = (booking, property, defaultValue = '') => {
+    if (!booking) return defaultValue;
+    
+    const value = booking[property];
+    if (value === undefined || value === null) return defaultValue;
+    
+    // If we're expecting a number (for calculations) and defaultValue is a number
+    if (typeof defaultValue === 'number' && !isNaN(Number(value))) {
+      return Number(value);
+    }
+    
+    return value;
+  };
+
+  // Add an effect to trigger refresh when status changes
+  useEffect(() => {
+    if (lastStatusChange && onRefresh) {
+      // Reset last status change
+      setLastStatusChange(null);
+      // Call refresh from parent component
+      onRefresh();
+    }
+  }, [lastStatusChange, onRefresh]);
+
+  // Add effect to close details modal if bookings change
+  useEffect(() => {
+    // If details modal is open and bookings list refreshes, close the modal to prevent stale data errors
+    if (showDetailsModal && detailsBooking) {
+      const bookingStillExists = bookings.some(booking => booking._id === detailsBooking._id);
+      if (!bookingStillExists) {
+        setShowDetailsModal(false);
+        setDetailsBooking(null);
+      } else {
+        // Update details booking with the latest data
+        const updatedBooking = bookings.find(booking => booking._id === detailsBooking._id);
+        if (updatedBooking && updatedBooking.status !== detailsBooking.status) {
+          setDetailsBooking(updatedBooking);
+        }
+      }
+    }
+  }, [bookings, showDetailsModal, detailsBooking]);
 
   // Fetch agent names when component mounts
   useEffect(() => {
@@ -70,7 +117,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
       return;
     }
     
-    // For approval, proceed directly
+    // For approval or setting to pending, proceed directly
     updateBookingStatus(bookingId, newStatus);
   };
 
@@ -122,6 +169,19 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
           onStatusChange(bookingId, newStatus);
         }
         
+        // If the details modal is open and showing this booking, update its status
+        if (detailsBooking && detailsBooking._id === bookingId) {
+          setDetailsBooking({
+            ...detailsBooking, 
+            status: newStatus,
+            ...(newStatus === 'rejected' && { rejectionReason }),
+            ...(newStatus !== 'rejected' && { rejectionReason: '' })
+          });
+        }
+        
+        // Set the last status change to trigger refresh
+        setLastStatusChange({ bookingId, newStatus, timestamp: Date.now() });
+        
         // Refresh the list if needed
         if (onRefresh) {
           onRefresh();
@@ -172,6 +232,15 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
           onDelete(bookingId);
         }
         
+        // Close details modal if it's showing the deleted booking
+        if (detailsBooking && detailsBooking._id === bookingId) {
+          setShowDetailsModal(false);
+          setDetailsBooking(null);
+        }
+        
+        // Set the last status change to trigger refresh
+        setLastStatusChange({ bookingId, action: 'delete', timestamp: Date.now() });
+        
         // Refresh the list if needed
         if (onRefresh) {
           onRefresh();
@@ -217,6 +286,12 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
     return type === 'pool' ? 'Pool Only' : 'Villa + Pool';
   };
 
+  // Handle view booking details
+  const handleViewDetails = (booking) => {
+    setDetailsBooking(booking);
+    setShowDetailsModal(true);
+  };
+
   if (!bookings || bookings.length === 0) {
     return (
       <div className="bg-white shadow rounded-lg p-6 text-center">
@@ -229,7 +304,16 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
     <div className="bg-white shadow overflow-hidden sm:rounded-md">
       <ul className="divide-y divide-gray-200">
         {bookings.map((booking) => (
-          <li key={booking._id}>
+          <li key={booking._id} className="relative">
+            {/* Share button as icon in top right */}
+            <div className="absolute top-4 right-4">
+              <ShareButton 
+                title={`Booking for ${booking.guestName}`} 
+                description={`${getRentalTypeDisplay(booking.rentalType)} booking from ${formatDate(booking.startDate)} to ${formatDate(booking.endDate)}`}
+                iconOnly={true}
+              />
+            </div>
+            
             <div className="px-4 py-4 sm:px-6">
               <div className="flex flex-col sm:flex-row justify-between">
                 <div>
@@ -244,9 +328,15 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                   <div className="mt-2 flex items-center text-sm text-gray-500">
                     <span>{getRentalTypeDisplay(booking.rentalType)}</span>
                     <span className="mx-1">•</span>
-                    <span>{booking.guestCount} guests</span>
+                    <span>
+                      {safe(booking, 'adults') || safe(booking, 'children') ? 
+                        `${(safe(booking, 'adults', 0) + safe(booking, 'children', 0))} guests (${safe(booking, 'adults', 0)} adults${safe(booking, 'children', 0) > 0 ? `, ${safe(booking, 'children', 0)} children` : ''})` 
+                        : 
+                        `${safe(booking, 'guestCount', 0)} guests`
+                      }
+                    </span>
                     <span className="mx-1">•</span>
-                    <span>${booking.amount}</span>
+                    <span>₪ {booking.amount}</span>
                   </div>
                   <div className="mt-2 flex items-center text-sm text-gray-500">
                     <p>
@@ -254,9 +344,9 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                     </p>
                   </div>
                   {/* Display agent name (admin can see this or on their own bookings) */}
-                  {hasRole('admin') && agentNames[booking.agentId] && (
+                  {hasRole('admin') && booking.agentId && (
                     <div className="mt-2 text-sm text-gray-500">
-                      <p>Created by: <span className="font-medium">{agentNames[booking.agentId]}</span></p>
+                      <p>Created by: <span className="font-medium">{agentNames[booking.agentId] || "Unknown Agent"}</span></p>
                     </div>
                   )}
                   {booking.status === 'rejected' && booking.rejectionReason && (
@@ -267,6 +357,14 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 </div>
                 
                 <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+                  {/* View Details Button */}
+                  <button
+                    onClick={() => handleViewDetails(booking)}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    View Details
+                  </button>
+
                   {/* Admin actions */}
                   {hasRole('admin') && booking.status === 'pending' && (
                     <>
@@ -285,6 +383,28 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                         Reject
                       </button>
                     </>
+                  )}
+                  
+                  {/* Allow admin to change approved bookings to rejected */}
+                  {hasRole('admin') && booking.status === 'approved' && (
+                    <button
+                      onClick={() => handleStatusChange(booking._id, 'rejected')}
+                      disabled={actionLoading[booking._id]}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  )}
+                  
+                  {/* Allow admin to approve rejected bookings */}
+                  {hasRole('admin') && booking.status === 'rejected' && (
+                    <button
+                      onClick={() => handleStatusChange(booking._id, 'approved')}
+                      disabled={actionLoading[booking._id]}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
                   )}
                   
                   {/* Admin delete button */}
@@ -310,6 +430,14 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
           <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full">
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Reason for Rejection</h3>
+              
+              {/* Add context for admin changing an approved booking to rejected */}
+              <p className="mb-4 text-gray-600">
+                {bookings.find(b => b._id === selectedBooking)?.status === 'approved' 
+                  ? 'You are changing an approved booking to rejected status. Please provide a reason for this change.' 
+                  : 'Please provide a reason for rejecting this booking.'}
+              </p>
+              
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
@@ -336,6 +464,174 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                   className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                 >
                   {actionLoading[selectedBooking] ? 'Submitting...' : 'Reject Booking'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Details Modal */}
+      {showDetailsModal && detailsBooking && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-2xl w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="text-lg font-medium text-gray-900">Booking Details</h3>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Booking ID</h4>
+                  <p className="mt-1">{detailsBooking._id}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                  <p className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
+                    {detailsBooking.status.charAt(0).toUpperCase() + detailsBooking.status.slice(1)}
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Guest Name</h4>
+                  <p className="mt-1">{detailsBooking.guestName}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Phone Number</h4>
+                  <p className="mt-1">{detailsBooking.phoneNumber || "Not provided"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Rental Type</h4>
+                  <p className="mt-1">{getRentalTypeDisplay(detailsBooking.rentalType)}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Duration</h4>
+                  <p className="mt-1">{detailsBooking.duration} days</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Check-in Date</h4>
+                  <p className="mt-1">{formatDate(detailsBooking.startDate)}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Check-out Date</h4>
+                  <p className="mt-1">{formatDate(detailsBooking.endDate)}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Number of Guests</h4>
+                  <p className="mt-1">
+                    {safe(detailsBooking, 'adults') || safe(detailsBooking, 'children') ? 
+                      `${(safe(detailsBooking, 'adults', 0) + safe(detailsBooking, 'children', 0))} guests (${safe(detailsBooking, 'adults', 0)} adults${safe(detailsBooking, 'children', 0) > 0 ? `, ${safe(detailsBooking, 'children', 0)} children` : ''})` 
+                      : 
+                      `${safe(detailsBooking, 'guestCount', 0)} guests`
+                    }
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Amount</h4>
+                  <p className="mt-1">₪ {detailsBooking.amount}</p>
+                </div>
+                
+                {hasRole('admin') && detailsBooking.agentId && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Created By</h4>
+                    <p className="mt-1">{agentNames[detailsBooking.agentId] || "Unknown Agent"}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Created At</h4>
+                  <p className="mt-1">{new Date(detailsBooking.createdAt).toLocaleString()}</p>
+                </div>
+                
+                {detailsBooking.status === 'rejected' && detailsBooking.rejectionReason && (
+                  <div className="col-span-2">
+                    <h4 className="text-sm font-medium text-gray-500">Rejection Reason</h4>
+                    <p className="mt-1 text-red-600">{detailsBooking.rejectionReason}</p>
+                  </div>
+                )}
+                
+                {detailsBooking.details && (
+                  <div className="col-span-2">
+                    <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
+                    <p className="mt-1">{detailsBooking.details}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                {/* Admin action buttons in details modal */}
+                {hasRole('admin') && (
+                  <div className="flex space-x-2 mr-auto">
+                    {detailsBooking.status !== 'approved' && (
+                      <button
+                        onClick={() => {
+                          updateBookingStatus(detailsBooking._id, 'approved');
+                        }}
+                        disabled={actionLoading[detailsBooking._id]}
+                        className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    
+                    {detailsBooking.status !== 'rejected' && (
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(detailsBooking._id);
+                          setShowModal(true);
+                          setShowDetailsModal(false);
+                        }}
+                        disabled={actionLoading[detailsBooking._id]}
+                        className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    )}
+                    
+                    {detailsBooking.status !== 'pending' && (
+                      <button
+                        onClick={() => {
+                          updateBookingStatus(detailsBooking._id, 'pending');
+                        }}
+                        disabled={actionLoading[detailsBooking._id]}
+                        className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        Set Pending
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => handleDelete(detailsBooking._id)}
+                      disabled={actionLoading[detailsBooking._id]}
+                      className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => setShowDetailsModal(false)}
+                  className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -106,17 +106,21 @@ export async function POST(request) {
     // Parse request body
     const body = await request.json();
     const { 
-      guestName, 
+      guestName,
+      phoneNumber,
+      adults,
+      children, 
       guestCount, 
       rentalType, 
       startDate, 
       endDate, 
       duration, 
-      amount 
+      amount,
+      details
     } = body;
     
     // Validate required fields
-    if (!guestName || !guestCount || !rentalType || !startDate || !endDate || !duration || !amount) {
+    if (!guestName || !phoneNumber || !adults || !rentalType || !startDate || !endDate || !duration || !amount) {
       return NextResponse.json({ 
         success: false, 
         message: 'Please provide all required fields' 
@@ -331,12 +335,16 @@ export async function POST(request) {
     const booking = await Booking.create({
       agentId: user.userId, // The creator's ID (could be admin or agent)
       guestName,
+      phoneNumber,
+      adults,
+      children: children || 0,
       guestCount,
       rentalType,
       startDate: bookingStartDate,
       endDate: bookingEndDate,
       duration,
       amount,
+      details: details || '',
       // If admin creates booking, automatically approve it
       status: user.role === 'admin' ? 'approved' : 'pending'
     });
