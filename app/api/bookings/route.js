@@ -140,12 +140,21 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    // Convert string dates to Date objects and normalize time to start of day
+    // Convert string dates to Date objects and normalize time to start of day for UTC
+    // Use a more reliable approach to ensure we get the exact date the user selected
+    const inputStartDate = new Date(startDate);
+    console.log('Original input start date:', inputStartDate.toISOString());
+    
+    // Always set hours to 0 (start of day) in UTC for consistent date handling
     const bookingStartDate = new Date(Date.UTC(
-      new Date(startDate).getUTCFullYear(),
-      new Date(startDate).getUTCMonth(),
-      new Date(startDate).getUTCDate()
+      inputStartDate.getFullYear(),
+      inputStartDate.getMonth(),
+      inputStartDate.getDate(),
+      0, 0, 0, 0  // Set to midnight UTC
     ));
+    
+    // Log the actual date to be stored
+    console.log('UTC start date to be stored:', bookingStartDate.toISOString());
     
     // For pool bookings, ensure the end date is the same as the start date
     // This prevents issues with date display showing end date as day before start date
@@ -154,16 +163,22 @@ export async function POST(request) {
     
     if (rentalType === 'pool') {
       // For pool bookings, set end date to be the same as start date and duration to 1
-      bookingEndDate = new Date(bookingStartDate);
+      // Create a new Date object with the exact same UTC timestamp
+      bookingEndDate = new Date(bookingStartDate.getTime());
       bookingDuration = 1;
-      console.log('Pool booking - setting end date same as start date:', bookingEndDate);
+      console.log('Pool booking - setting end date same as start date:', bookingEndDate.toISOString());
     } else {
-      // For villa bookings, use the provided end date
+      // For villa bookings, use the provided end date - also normalized to midnight UTC
+      const inputEndDate = new Date(endDate);
+      console.log('Original input end date:', inputEndDate.toISOString());
+      
       bookingEndDate = new Date(Date.UTC(
-        new Date(endDate).getUTCFullYear(),
-        new Date(endDate).getUTCMonth(),
-        new Date(endDate).getUTCDate()
+        inputEndDate.getFullYear(),
+        inputEndDate.getMonth(),
+        inputEndDate.getDate(),
+        0, 0, 0, 0  // Set to midnight UTC
       ));
+      console.log('UTC end date to be stored:', bookingEndDate.toISOString());
       bookingDuration = duration;
     }
     
@@ -177,8 +192,8 @@ export async function POST(request) {
         rentalType: 'villa_pool',
         status: { $in: ['approved', 'pending'] },
         startDate: {
-          $gte: new Date(bookingStartDate.setHours(0, 0, 0, 0)),
-          $lt: new Date(bookingStartDate.setHours(23, 59, 59, 999))
+          $gte: new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0)),
+          $lt: new Date(new Date(bookingStartDate).setHours(23, 59, 59, 999))
         }
       });
       
@@ -193,8 +208,8 @@ export async function POST(request) {
       const conflictingVilla = await Booking.findOne({
         rentalType: 'villa_pool',
         status: { $in: ['approved', 'pending'] },
-        startDate: { $lte: bookingStartDate },
-        endDate: { $gt: bookingStartDate }
+        startDate: { $lte: new Date(bookingStartDate) },
+        endDate: { $gt: new Date(bookingStartDate) }
       });
       
       if (conflictingVilla) {
@@ -400,6 +415,13 @@ export async function POST(request) {
         // Continue with booking creation - no conflict
       }
     }
+    
+    // Log the actual dates that will be stored to help with debugging
+    console.log('Dates to be stored in booking:', {
+      startDate: bookingStartDate.toISOString(),
+      endDate: bookingEndDate.toISOString(),
+      duration: bookingDuration
+    });
     
     // Create new booking
     const booking = await Booking.create({

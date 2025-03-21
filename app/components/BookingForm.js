@@ -1264,7 +1264,11 @@ const BookingForm = ({ onBookingCreated }) => {
                      
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Duration:</h4>
-                  <p className="font-bold">{detailsBooking.duration} nights</p>
+                  <p className="font-bold">
+                    {detailsBooking.rentalType === 'pool' 
+                      ? "1 day" 
+                      : `${detailsBooking.duration} ${detailsBooking.duration === 1 ? 'night' : 'nights'}`}
+                  </p>
                 </div>
                 
 

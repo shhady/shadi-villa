@@ -108,24 +108,25 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // Helper function to get booking display dates and duration text
-  const getBookingDatesDisplay = (booking) => {
-    // For pool bookings, the start and end date should be the same
-    // This fixes the issue where end date is displayed as a day before the start date
+  // Helper function to get date and duration display based on rental type
+  function getBookingDisplay(booking) {
+    // Format dates properly with local date method
+    const formatLocalDate = (date) => new Date(date).toLocaleDateString();
+    
     if (booking.rentalType === 'pool') {
-      const date = formatDate(booking.startDate);
+      // For pool bookings, display as a single day
       return {
-        dateRange: `${date}`,
-        durationText: `(1 day)`
+        dateDisplay: formatLocalDate(booking.startDate),
+        durationDisplay: '1 day'
       };
     } else {
-      // For villa_pool bookings, show the range with both start and end dates
+      // For villa bookings, show date range and nights
       return {
-        dateRange: `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)}`,
-        durationText: `(${booking.duration} ${booking.duration === 1 ? 'day' : 'days'})`
+        dateDisplay: `${formatLocalDate(booking.startDate)} - ${formatLocalDate(booking.endDate)}`,
+        durationDisplay: `${booking.duration} ${booking.duration === 1 ? 'night' : 'nights'}`
       };
     }
-  };
+  }
 
   // Handle status change (approve/reject)
   const handleStatusChange = async (bookingId, newStatus) => {
@@ -328,7 +329,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
             <div className="absolute top-4 right-4">
               <ShareButton 
                 title={`Booking for ${booking.guestName}`} 
-                description={`${getRentalTypeDisplay(booking.rentalType)} booking from ${getBookingDatesDisplay(booking).dateRange}`}
+                description={`${getRentalTypeDisplay(booking.rentalType)} booking from ${getBookingDisplay(booking).dateDisplay}`}
                 iconOnly={true}
               />
             </div>
@@ -358,11 +359,12 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                     <span>₪ {booking.amount}</span>
                   </div>
                   <div className="mt-2 flex items-center text-sm text-gray-500">
-                    <p>
-                      {booking.rentalType === 'pool' 
-                        ? `${formatDate(booking.startDate)} (1 day)` 
-                        : `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)} (${booking.duration} ${booking.duration === 1 ? 'day' : 'days'})`}
-                    </p>
+                    <span className="text-sm font-bold">
+                      {getBookingDisplay(booking).dateDisplay}
+                    </span>
+                    <span className="text-sm ml-1 text-gray-500">
+                      ({getBookingDisplay(booking).durationDisplay})
+                    </span>
                   </div>
                   {/* Display agent name (admin can see this or on their own bookings) */}
                   {hasRole('admin') && booking.agentId && (

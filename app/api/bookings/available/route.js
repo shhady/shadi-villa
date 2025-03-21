@@ -96,33 +96,30 @@ function getUnavailableDatesFromBookings(bookings, includeEndDate = false) {
     const start = new Date(booking.startDate);
     const end = new Date(booking.endDate);
     
+    // For pool bookings, we need to handle start and end date the same
+    // Since it's a single day booking
+    if (booking.rentalType === 'pool') {
+      const poolDate = new Date(start);
+      poolDate.setHours(0, 0, 0, 0);
+      unavailableDates.push(poolDate.toISOString());
+      return; // Skip the rest of the logic for pool bookings
+    }
+    
     // Reset hours to ensure comparisons are date-only
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
     
-    // Add all dates between start and end to unavailable dates
+    // For villa bookings, add all dates between start and end (optionally excluding end date)
     const current = new Date(start);
     
-    while (true) {
+    while (current < end || (includeEndDate && current.getTime() === end.getTime())) {
       // Add current date to unavailable dates (as ISO string for consistent comparison)
       unavailableDates.push(current.toISOString());
       
       // Increment date by one day
-      current.setDate(current.getDate() + 1);
-      
-      // Check if we've reached the end date
-      if (current.getTime() === end.getTime()) {
-        // Include the end date only if specified
-        if (includeEndDate) {
-          unavailableDates.push(current.toISOString());
-        }
-        break;
-      }
-      
-      // Stop if we've gone past the end date
-      if (current > end) {
-        break;
-      }
+      const nextDay = new Date(current);
+      nextDay.setDate(nextDay.getDate() + 1);
+      current.setTime(nextDay.getTime());
     }
   });
   
