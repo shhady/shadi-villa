@@ -1229,7 +1229,7 @@ const BookingForm = ({ onBookingCreated }) => {
                 
                 <div className='flex justify-start items-center gap-4'>
                   <h4 className=" font-medium text-gray-500">Status</h4>
-                  <p className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
+                  <p className={`inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
                     {detailsBooking.status.charAt(0).toUpperCase() + detailsBooking.status.slice(1)}
                   </p>
                 </div>
