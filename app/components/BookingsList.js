@@ -119,10 +119,9 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
   // Helper function to get date and duration display based on rental type
   function getBookingDisplay(booking) {
     if (booking.rentalType === 'pool') {
-      // For pool bookings, display as a single day
-      // Use formatDate which normalizes the date
+      // For pool bookings, display start date with end date one day later
       return {
-        dateDisplay: formatDate(booking.startDate),
+        dateDisplay: `${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}`,
         durationDisplay: '1 day'
       };
     } else {
@@ -540,7 +539,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className=" font-medium text-gray-500">Check-out:</h4>
-                  <p className="font-bold">{detailsBooking.rentalType === 'pool' ? formatDate(detailsBooking.startDate) : formatDate(detailsBooking.endDate)}</p>
+                  <p className="font-bold">{formatDate(detailsBooking.endDate)}</p>
                 </div>
                      
                 <div className='flex justify-start items-center gap-2'>

@@ -97,25 +97,12 @@ function getUnavailableDatesFromBookings(bookings, includeEndDate = false) {
     const start = new Date(booking.startDate);
     const end = new Date(booking.endDate);
     
-    // For pool bookings, we need to handle start and end date the same
-    // Since it's a single day booking
-    if (booking.rentalType === 'pool') {
-      // Normalize to start of day in UTC to avoid timezone issues
-      const poolDate = new Date(Date.UTC(
-        start.getUTCFullYear(),
-        start.getUTCMonth(),
-        start.getUTCDate(),
-        0, 0, 0, 0
-      ));
-      unavailableDates.push(poolDate.toISOString());
-      return; // Skip the rest of the logic for pool bookings
-    }
-    
     // Reset hours to ensure comparisons are date-only (in UTC)
     start.setUTCHours(0, 0, 0, 0);
     end.setUTCHours(0, 0, 0, 0);
     
-    // For villa bookings, add all dates between start and end (optionally excluding end date)
+    // For all booking types, add all dates between start and end (optionally excluding end date)
+    // This now applies the same logic to both pool and villa bookings
     const current = new Date(start);
     
     while (current < end || (includeEndDate && current.getTime() === end.getTime())) {

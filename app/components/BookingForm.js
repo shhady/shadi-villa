@@ -156,7 +156,7 @@ const BookingForm = ({ onBookingCreated }) => {
     
     // Special handling for rental type change
     if (name === 'rentalType') {
-      // If changing to pool, set end date same as start date
+      // If changing to pool, set end date one day after start date
       if (value === 'pool') {
         const startDate = formData.startDate;
         
@@ -166,10 +166,14 @@ const BookingForm = ({ onBookingCreated }) => {
           return;
         }
         
+        // Set end date to one day after start date for pool bookings
+        const nextDay = new Date(startDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
         setFormData({
           ...formData,
           rentalType: value,
-          endDate: new Date(startDate),
+          endDate: nextDay,
           duration: 1
         });
         
@@ -229,12 +233,15 @@ const BookingForm = ({ onBookingCreated }) => {
         return;
       }
       
-      // For pool rentals, set end date same as start date
+      // For pool rentals, set end date to one day after start date
       if (formData.rentalType === 'pool') {
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
         setFormData({
           ...formData,
           startDate: selectedDate,
-          endDate: selectedDate,
+          endDate: nextDay,
           duration: 1
         });
         
@@ -266,9 +273,9 @@ const BookingForm = ({ onBookingCreated }) => {
         calculateAmount('villa_pool', newDuration);
       }
     } else if (name === 'endDate') {
-      // For pool rental, cannot change end date (it must be same as start date)
+      // For pool rental, end date is automatically set and cannot be changed manually
       if (formData.rentalType === 'pool') {
-        toast.error('Pool bookings must be for a single day. You cannot change the end date.');
+        toast.error('For pool bookings, end date is automatically set to the day after the start date.');
         return;
       }
       
@@ -342,43 +349,44 @@ const BookingForm = ({ onBookingCreated }) => {
       return false;
     }
     
-    // Check if this date is the end date of a villa+pool booking
-    // End dates of villa+pool bookings should be available for new bookings to start
+    // Check if this date is the end date of a booking (villa or pool)
+    // End dates of bookings should be available for new bookings to start
     if (isCheckoutDay(date)) {
       return false; // Always allow booking on checkout days
     }
     
-    if (rentalType === 'pool') {
-      return unavailableDates.pool.some(unavailableDate => {
-        // Normalize the unavailable date to UTC
-        const unavailableDateObj = new Date(unavailableDate);
-        const unavailableDateNormalized = new Date(Date.UTC(
-          unavailableDateObj.getFullYear(),
-          unavailableDateObj.getMonth(),
-          unavailableDateObj.getDate(),
-          0, 0, 0, 0
-        ));
-        return unavailableDateNormalized.getTime() === normalizedDate.getTime();
-      });
-    } else { // villa_pool
-      return unavailableDates.villa.some(unavailableDate => {
-        // Normalize the unavailable date to UTC
-        const unavailableDateObj = new Date(unavailableDate);
-        const unavailableDateNormalized = new Date(Date.UTC(
-          unavailableDateObj.getFullYear(),
-          unavailableDateObj.getMonth(),
-          unavailableDateObj.getDate(),
-          0, 0, 0, 0
-        ));
-        return unavailableDateNormalized.getTime() === normalizedDate.getTime();
-      });
-    }
+    // Now check if the date falls within any booking's range (excluding end dates)
+    // This applies to both pool and villa bookings with the same logic
+    return bookings.some(booking => {
+      // Skip rejected bookings
+      if (booking.status === 'rejected') return false;
+      
+      // Normalize booking dates
+      const startDate = new Date(booking.startDate);
+      const startNormalized = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      const endDate = new Date(booking.endDate);
+      const endNormalized = new Date(Date.UTC(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      // Date is unavailable if it falls between start and end (exclusive of end)
+      return normalizedDate >= startNormalized && normalizedDate < endNormalized;
+    });
   };
 
-  // Check if a date is a checkout day (any villa+pool booking end date, not pool bookings)
+  // Check if a date is a checkout day (end date of any booking)
   const isCheckoutDay = (date) => {
+    // Normalize the date to start of day in UTC for consistent comparison
     const dateToCheck = new Date(date);
-    // Use UTC methods to avoid timezone shifts
     const normalizedDate = new Date(Date.UTC(
       dateToCheck.getFullYear(),
       dateToCheck.getMonth(),
@@ -386,58 +394,11 @@ const BookingForm = ({ onBookingCreated }) => {
       0, 0, 0, 0
     ));
     
-    // First check if there's a pool booking on this date - if so, it's NOT a checkout day
-    // regardless of whether it's also a villa_pool end date
-    const hasPoolBooking = bookings.some(booking => {
-      // If it's a rejected booking, skip it
+    // Check if any booking (pool or villa) has this date as its end date
+    // Only consider pending and approved bookings, not rejected ones
+    return bookings.some(booking => {
+      // Skip rejected bookings
       if (booking.status === 'rejected') return false;
-      
-      // Check if it's a pool booking
-      if (booking.rentalType === 'pool') {
-        const bookingDate = new Date(booking.startDate); // For pool bookings, start = end
-        // Normalize to UTC
-        const normalizedBookingDate = new Date(Date.UTC(
-          bookingDate.getFullYear(),
-          bookingDate.getMonth(),
-          bookingDate.getDate(),
-          0, 0, 0, 0
-        ));
-        return normalizedBookingDate.getTime() === normalizedDate.getTime();
-      }
-      
-      return false;
-    });
-    
-    // If there's a pool booking on this date, it can't be a checkout day
-    if (hasPoolBooking) return false;
-    
-    // Check if this day is a start date of any non-rejected booking
-    // If it's a start date of another booking, it shouldn't be a checkout day
-    const isStartDate = bookings.some(booking => {
-      // Skip rejected bookings entirely
-      if (booking.status === 'rejected') return false;
-      
-      const startDate = new Date(booking.startDate);
-      // Normalize to UTC
-      const normalizedStartDate = new Date(Date.UTC(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        0, 0, 0, 0
-      ));
-      return normalizedStartDate.getTime() === normalizedDate.getTime();
-    });
-    
-    // If it's a start date of any booking, it can't be a checkout day
-    if (isStartDate) return false;
-    
-    // First check through all bookings - only pending and approved villa+pool bookings should be considered
-    const isBookingEndDate = bookings.some(booking => {
-      // Skip rejected bookings entirely - their end dates should appear as normal available dates
-      if (booking.status === 'rejected') return false;
-      
-      // Only check villa bookings, not pool bookings
-      if (booking.rentalType !== 'villa_pool') return false;
       
       const endDate = new Date(booking.endDate);
       // Normalize to UTC
@@ -447,72 +408,21 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate.getDate(),
         0, 0, 0, 0
       ));
+      
       return normalizedEndDate.getTime() === normalizedDate.getTime();
     });
-    
-    if (isBookingEndDate) return true;
-    
-    // Also check villa end dates from API, but verify they're not from rejected bookings or pool bookings
-    if (unavailableDates.villaEndDates && unavailableDates.villaEndDates.length > 0) {
-      // We need to cross-reference with the bookings to exclude end dates of rejected bookings and pool bookings
-      const isEndDateOfNonRejectedVillaBooking = unavailableDates.villaEndDates.some(endDate => {
-        const endDateObj = new Date(endDate);
-        // Normalize to UTC
-        const normalizedEndDate = new Date(Date.UTC(
-          endDateObj.getFullYear(),
-          endDateObj.getMonth(),
-          endDateObj.getDate(),
-          0, 0, 0, 0
-        ));
-        
-        if (normalizedEndDate.getTime() !== normalizedDate.getTime()) return false;
-        
-        // End date matches, now check if it belongs to a rejected booking
-        const isRejectedBookingEndDate = bookings.some(booking => {
-          if (booking.status === 'rejected') {
-            const endDate = new Date(booking.endDate);
-            // Normalize to UTC
-            const bookingEndDate = new Date(Date.UTC(
-              endDate.getFullYear(),
-              endDate.getMonth(),
-              endDate.getDate(),
-              0, 0, 0, 0
-            ));
-            return bookingEndDate.getTime() === normalizedDate.getTime();
-          }
-          return false;
-        });
-        
-        // Also check if it belongs to a pool booking (which occupy the full day)
-        const isPoolBookingEndDate = bookings.some(booking => {
-          if (booking.rentalType === 'pool') {
-            const endDate = new Date(booking.endDate);
-            // Normalize to UTC
-            const bookingEndDate = new Date(Date.UTC(
-              endDate.getFullYear(),
-              endDate.getMonth(),
-              endDate.getDate(),
-              0, 0, 0, 0
-            ));
-            return bookingEndDate.getTime() === normalizedDate.getTime();
-          }
-          return false;
-        });
-        
-        // Return true only for non-rejected, non-pool booking end dates
-        return !isRejectedBookingEndDate && !isPoolBookingEndDate;
-      });
-      
-      return isEndDateOfNonRejectedVillaBooking;
-    }
-    
-    return false;
   };
 
   // Check if a date has a pool booking
   const hasPoolBooking = (date) => {
     const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
+    // Normalize to UTC midnight
+    const normalizedDate = new Date(Date.UTC(
+      dateToCheck.getFullYear(),
+      dateToCheck.getMonth(),
+      dateToCheck.getDate(),
+      0, 0, 0, 0
+    ));
     
     return bookings.some(booking => {
       // Skip rejected bookings
@@ -520,9 +430,26 @@ const BookingForm = ({ onBookingCreated }) => {
       
       // Check if it's a pool booking
       if (booking.rentalType === 'pool') {
-        const bookingDate = new Date(booking.startDate); // For pool bookings, start = end
-        bookingDate.setHours(0, 0, 0, 0);
-        return bookingDate.getTime() === dateToCheck.getTime();
+        const startDate = new Date(booking.startDate);
+        const endDate = new Date(booking.endDate);
+        
+        // Normalize to UTC midnight
+        const normalizedStartDate = new Date(Date.UTC(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          0, 0, 0, 0
+        ));
+        
+        const normalizedEndDate = new Date(Date.UTC(
+          endDate.getFullYear(),
+          endDate.getMonth(),
+          endDate.getDate(),
+          0, 0, 0, 0
+        ));
+        
+        // Date has a pool booking if it's between start and end (exclusive of end)
+        return normalizedDate >= normalizedStartDate && normalizedDate < normalizedEndDate;
       }
       
       return false;
@@ -776,20 +703,9 @@ const BookingForm = ({ onBookingCreated }) => {
     }
   };
   
-  // Get status class for a day
+  // Get CSS class for calendar day status, with admin-specific handling
   const getDayStatusClass = (date) => {
-    if (!date) return '';
-    
-    const today = new Date();
-    // Normalize today to UTC midnight
-    const normalizedToday = new Date(Date.UTC(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      0, 0, 0, 0
-    ));
-    
-    // Normalize the input date to UTC midnight
+    // First normalize the date to UTC midnight for comparison
     const normalizedDate = new Date(Date.UTC(
       date.getFullYear(),
       date.getMonth(),
@@ -797,48 +713,69 @@ const BookingForm = ({ onBookingCreated }) => {
       0, 0, 0, 0
     ));
     
-    // If date is before today, return gray
-    if (normalizedDate < normalizedToday) {
-      return 'bg-gray-200';
+    // Admin-specific clickable classes
+    const adminClickableClass = hasRole('admin') ? 'cursor-pointer hover:opacity-75' : '';
+    
+    // Current and selected date styling
+    const currentDateString = normalizedDate.toISOString().split('T')[0];
+    const startDateString = new Date(formData.startDate).toISOString().split('T')[0];
+    const endDateString = new Date(formData.endDate).toISOString().split('T')[0];
+    
+    // Check for current date, start date, and end date classes
+    if (currentDateString === startDateString) {
+      return `bg-blue-600 text-white ${adminClickableClass}`; // Selected start date
     }
     
-    // Check if there's an existing booking for this date (for admin view)
-    const bookingExists = hasRole('admin') && findBookingForDate(date);
-    let adminClickableClass = '';
-    
-    // If admin and there's a booking, add a subtle border to indicate it's clickable
-    if (bookingExists) {
-      adminClickableClass = 'border border-gray-500 cursor-pointer';
+    if (currentDateString === endDateString) {
+      return `bg-blue-400 text-white ${adminClickableClass}`; // Selected end date
     }
     
-    // First check for pool bookings - they take priority over checkout day status
-    const poolBooking = bookings.find(booking => {
-      if (booking.status !== 'rejected' && booking.rentalType === 'pool') {
-        const bookingDate = new Date(booking.startDate);
-        // Normalize the booking date to UTC midnight
-        const normalizedBookingDate = new Date(Date.UTC(
-          bookingDate.getFullYear(),
-          bookingDate.getMonth(),
-          bookingDate.getDate(),
+    // Past dates are light gray and not clickable
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) {
+      return 'bg-gray-100 text-gray-400 opacity-50 cursor-not-allowed'; // Past dates
+    }
+    
+    // Find a booking for this date 
+    const booking = findBookingForDate(date);
+    if (booking) {
+      // Pool booking is a special case (now treated the same as villa - blocked on start date but not end date)
+      if (booking.rentalType === 'pool') {
+        // Get booking start and end dates normalized to UTC
+        const startDate = new Date(booking.startDate);
+        const normalizedStartDate = new Date(Date.UTC(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
           0, 0, 0, 0
         ));
-        return normalizedBookingDate.getTime() === normalizedDate.getTime();
+        
+        const endDate = new Date(booking.endDate);
+        const normalizedEndDate = new Date(Date.UTC(
+          endDate.getFullYear(),
+          endDate.getMonth(),
+          endDate.getDate(),
+          0, 0, 0, 0
+        ));
+        
+        // If it's a pool booking end date, treat as available but with special indicator
+        if (normalizedDate.getTime() === normalizedEndDate.getTime()) {
+          return `bg-green-300 ${adminClickableClass}`;
+        }
+        
+        // Check status of the pool booking
+        if (booking.status === 'pending') {
+          return `bg-orange-100 ${adminClickableClass}`; // Pending pools should be orange/yellow
+        }
+        // Must be an approved pool booking
+        return `bg-blue-100 ${adminClickableClass}`;
       }
-      return false;
-    });
-    
-    if (poolBooking) {
-      // Check status of the pool booking
-      if (poolBooking.status === 'pending') {
-        return `bg-orange-100 ${adminClickableClass}`; // Pending pools should be orange/yellow
-      }
-      // Must be an approved pool booking
-      return `bg-blue-100 ${adminClickableClass}`;
     }
     
     // Check if day is a checkout day - this takes precedence over other statuses
     if (isCheckoutDay(date)) {
-      return `bg-green-300 `; // Available but with special indicator
+      return `bg-green-300 ${adminClickableClass}`; // Available but with special indicator
     }
     
     // Note: We no longer check for rejected dates as they're treated as available
@@ -1053,12 +990,15 @@ const BookingForm = ({ onBookingCreated }) => {
       return;
     }
     
-    // For pool rentals, set start and end date to the same day
+    // For pool rentals, set end date to one day after start date
     if (formData.rentalType === 'pool') {
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
       setFormData({
         ...formData,
         startDate: date,
-        endDate: date,
+        endDate: nextDay,
         duration: 1
       });
       
@@ -1230,7 +1170,7 @@ const BookingForm = ({ onBookingCreated }) => {
               className={`h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
             />
             {formData.rentalType === 'pool' && (
-              <p className="text-sm text-gray-500 mt-1">Pool bookings are for 1 day only.</p>
+              <p className="text-sm text-gray-500 mt-1">For pool bookings, checkout is automatically set to the day after check-in.</p>
             )}
           </div>
         </div>

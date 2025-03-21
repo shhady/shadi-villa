@@ -156,19 +156,21 @@ export async function POST(request) {
     // Log the actual date to be stored
     console.log('UTC start date to be stored:', bookingStartDate.toISOString());
     
-    // For pool bookings, ensure the end date is the same as the start date
+    // For pool bookings, ensure the end date is one day after start date
     // This prevents issues with date display showing end date as day before start date
     let bookingEndDate;
     let bookingDuration;
     
     if (rentalType === 'pool') {
-      // For pool bookings, set end date to be the same as start date and duration to 1
-      // Create a new Date object with the exact same UTC timestamp
-      bookingEndDate = new Date(bookingStartDate.getTime());
+      // For pool bookings, set end date to be one day after start date and duration to 1
+      // Create a new Date object with the proper end date
+      const nextDay = new Date(bookingStartDate);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      bookingEndDate = nextDay;
       bookingDuration = 1;
-      console.log('Pool booking - setting end date same as start date:', bookingEndDate.toISOString());
+      console.log('Pool booking - setting end date to one day after start date:', bookingEndDate.toISOString());
       
-      // Ensure both startDate and endDate are set to the start of day to avoid timezone issues
+      // Ensure both startDate and endDate have consistent UTC time
       bookingStartDate.setUTCHours(0, 0, 0, 0);
       bookingEndDate.setUTCHours(0, 0, 0, 0);
     } else {
@@ -186,220 +188,68 @@ export async function POST(request) {
       bookingDuration = duration;
     }
     
-    // Validate rental type specific rules
-    if (rentalType === 'pool') {
-      // Pool bookings must be for a single day only - this is now enforced by setting bookingEndDate = bookingStartDate
-      
-      // Now check if there's a villa booking that starts on this date
-      // Pool bookings are not allowed on start dates of villa bookings
-      const conflictingVillaStartDate = await Booking.findOne({
-        rentalType: 'villa_pool',
-        status: { $in: ['approved', 'pending'] },
-        startDate: {
-          $gte: new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0)),
-          $lt: new Date(new Date(bookingStartDate).setHours(23, 59, 59, 999))
-        }
-      });
-      
-      if (conflictingVillaStartDate) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Pool bookings are not allowed on start dates of villa bookings' 
-        }, { status: 409 });
+    // For both booking types, we check if the start date conflicts with another booking's start date
+    // But end dates are allowed to be another booking's start date
+    
+    // First, check if the proposed start date is already someone else's start date
+    // This applies to both pool and villa bookings
+    const conflictingStartDate = await Booking.findOne({
+      status: { $in: ['approved', 'pending'] },
+      startDate: {
+        $gte: new Date(new Date(bookingStartDate).setUTCHours(0, 0, 0, 0)),
+        $lt: new Date(new Date(bookingStartDate).setUTCHours(23, 59, 59, 999))
       }
-      
-      // NEW: Check if there's any villa+pool booking that includes this date
-      const conflictingVilla = await Booking.findOne({
-        rentalType: 'villa_pool',
-        status: { $in: ['approved', 'pending'] },
-        startDate: { $lte: new Date(bookingStartDate) },
-        endDate: { $gt: new Date(bookingStartDate) }
-      });
-      
-      if (conflictingVilla) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Pool bookings are not allowed on dates reserved for villa bookings' 
-        }, { status: 409 });
-      }
-      
-    } else if (rentalType === 'villa_pool') {
-      // Villa bookings must have both start and end dates
-      if (!startDate || !endDate) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Villa bookings must have both start and end dates' 
-        }, { status: 400 });
-      }
-      
-      // NEW: Check for any existing pool bookings on any of the dates
-      // Get all dates between start and end date
-      const allBookingDates = [];
-      const currentDate = new Date(bookingStartDate);
-      const endDateValue = new Date(bookingEndDate);
-      
-      while (currentDate < endDateValue) {
-        allBookingDates.push(new Date(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-      
-      if (allBookingDates.length > 0) {
-        const orConditions = allBookingDates.map(date => ({
-          startDate: {
-            $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
-            $lt: new Date(new Date(date).setHours(23, 59, 59, 999))
-          }
-        }));
-        
-        const poolConflictQuery = {
-          rentalType: 'pool',
-          status: { $in: ['approved', 'pending'] },
-          $or: orConditions
-        };
-        
-        const conflictingPoolBookings = await Booking.find(poolConflictQuery);
-        
-        if (conflictingPoolBookings.length > 0) {
-          console.log(`Found ${conflictingPoolBookings.length} conflicting pool bookings`);
-          return NextResponse.json({ 
-            success: false, 
-            message: `Villa booking conflicts with existing pool bookings. There are ${conflictingPoolBookings.length} pool booking(s) on your requested dates.` 
-          }, { status: 409 });
-        }
-      }
+    });
+    
+    if (conflictingStartDate) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `The selected start date (${new Date(bookingStartDate).toISOString().split('T')[0]}) is already booked as another booking's start date.`
+      }, { status: 409 });
     }
     
-    // Check for duplicate/overlapping bookings based on rental type
-    let overlapQuery;
+    // For both booking types, check if any date between start and end (excluding end) is already booked
+    // This is now the same logic for both pool and villa bookings
+    const allBookingDates = [];
+    const currentDate = new Date(bookingStartDate);
+    const endDateValue = new Date(bookingEndDate);
     
-    if (rentalType === 'pool') {
-      // For pool bookings, check if this date is specifically an end date of a villa booking
-      const normalizedDate = new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0));
-      const isEndDateOfVillaBooking = await Booking.findOne({
-        rentalType: 'villa_pool',
-        status: { $in: ['approved', 'pending'] },
-        endDate: normalizedDate
-      });
+    // Add all dates excluding the end date (endDateValue)
+    while (currentDate < endDateValue) {
+      allBookingDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    if (allBookingDates.length > 0) {
+      // Create a query to check if any booking (both pool and villa) 
+      // has start dates on any of our dates (excluding our end date)
+      const orConditions = allBookingDates.map(date => ({
+        $and: [
+          // Check if this date falls between another booking's start and end (exclusive of end)
+          { startDate: { $lte: new Date(date) } },
+          { endDate: { $gt: new Date(date) } }
+        ]
+      }));
       
-      // If it's an end date of a villa booking, allow it (no conflict)
-      if (isEndDateOfVillaBooking) {
-        console.log('Allowing pool booking on villa checkout day');
-        // Skip further conflict checks - this is explicitly allowed
-      } else {
-        // For pool bookings (single day), check for exact date matches
-        overlapQuery = {
-          // Only consider approved and pending bookings
-          status: { $in: ['approved', 'pending'] },
-          // Check if another pool booking exists for this exact day
-          rentalType: 'pool',
-          // Since pool bookings are for a single day, just check if any booking has this date
-          startDate: {
-            $gte: new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0)),
-            $lt: new Date(new Date(bookingStartDate).setHours(23, 59, 59, 999))
-          }
-        };
-        
-        // Exclude the current booking itself when checking for overlaps (for updates)
-        if (request.headers.get('x-booking-id')) {
-          overlapQuery._id = { $ne: request.headers.get('x-booking-id') };
-        }
-        
-        const overlappingBookings = await Booking.find(overlapQuery);
-        
-        if (overlappingBookings.length > 0) {
-          console.log(`Found ${overlappingBookings.length} overlapping pool bookings`);
-          return NextResponse.json({ 
-            success: false, 
-            message: `The selected date is not available. There ${overlappingBookings.length === 1 ? 'is' : 'are'} already ${overlappingBookings.length} pool booking(s) for this date.` 
-          }, { status: 409 }); // Conflict status code
-        }
-        
-        // Check if date is part of a villa booking (except end date)
-        const normalizedDate = new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0));
-        const villaCheck = await Booking.findOne({
-          rentalType: 'villa_pool',
-          status: { $in: ['approved', 'pending'] },
-          startDate: { $lte: normalizedDate },
-          endDate: { $gt: normalizedDate } // Note: this excludes exact end date matches
-        });
-        
-        if (villaCheck) {
-          console.log(`Pool booking date conflicts with villa booking ${villaCheck._id}`);
-          return NextResponse.json({ 
-            success: false, 
-            message: 'Pool bookings are not allowed on dates reserved for villa bookings, except checkout days.' 
-          }, { status: 409 });
-        }
+      // Since we want to block any date that falls within another booking's range (except end dates)
+      const conflictQuery = {
+        status: { $in: ['approved', 'pending'] },
+        $or: orConditions
+      };
+      
+      // Exclude the current booking itself when checking for overlaps (for updates)
+      if (request.headers.get('x-booking-id')) {
+        conflictQuery._id = { $ne: request.headers.get('x-booking-id') };
       }
-    } else {
-      // For villa_pool bookings, also check for any existing pool bookings on any dates within our range
-      if (rentalType === 'villa_pool') {
-        // Check for any pool bookings that fall within our date range (excluding the end date)
-        const poolConflictQuery = {
-          rentalType: 'pool',
-          status: { $in: ['approved', 'pending'] },
-          // Find pool bookings where the date falls within our range
-          startDate: {
-            $gte: new Date(new Date(bookingStartDate).setHours(0, 0, 0, 0)),
-            $lt: new Date(new Date(bookingEndDate).setHours(0, 0, 0, 0)) // Exclude end date
-          }
-        };
-        
-        // Exclude the current booking itself (for updates)
-        if (request.headers.get('x-booking-id')) {
-          poolConflictQuery._id = { $ne: request.headers.get('x-booking-id') };
-        }
-        
-        const conflictingPoolBookings = await Booking.find(poolConflictQuery);
-        
-        if (conflictingPoolBookings.length > 0) {
-          console.log(`Found ${conflictingPoolBookings.length} conflicting pool bookings`);
-          return NextResponse.json({ 
-            success: false, 
-            message: `Villa booking conflicts with existing pool bookings. There are ${conflictingPoolBookings.length} pool booking(s) on your requested dates.` 
-          }, { status: 409 });
-        }
-        
-        // For villa_pool bookings, check for any overlapping villa bookings
-        const villaOverlapQuery = {
-          // Only consider approved and pending bookings
-          status: { $in: ['approved', 'pending'] },
-          // Only check for villa bookings overlap
-          rentalType: 'villa_pool',
-          // Check for date overlap with any existing booking
-          $and: [
-            // Make sure the booking's start date is before our end date
-            { startDate: { $lt: new Date(bookingEndDate) } },
-            // Make sure the booking's end date is after our start date
-            // But allow bookings to start on another booking's end date
-            // by using $gt instead of $gte
-            { endDate: { $gt: new Date(bookingStartDate) } }
-          ]
-        };
-        
-        // Exclude the current booking itself when checking for overlaps (important for updates)
-        if (request.headers.get('x-booking-id')) {
-          villaOverlapQuery._id = { $ne: request.headers.get('x-booking-id') };
-        }
-        
-        // Log the query to help with debugging
-        console.log('Villa overlap query:', JSON.stringify(villaOverlapQuery));
-        
-        const overlappingVillaBookings = await Booking.find(villaOverlapQuery);
-        
-        if (overlappingVillaBookings.length > 0) {
-          console.log(`Found ${overlappingVillaBookings.length} overlapping villa bookings:`, 
-            overlappingVillaBookings.map(b => ({
-              id: b._id,
-              start: b.startDate,
-              end: b.endDate
-            }))
-          );
-          return NextResponse.json({ 
-            success: false, 
-            message: `The selected dates are not available. There ${overlappingVillaBookings.length === 1 ? 'is' : 'are'} already ${overlappingVillaBookings.length} booking(s) that overlap with your requested dates.` 
-          }, { status: 409 }); // Conflict status code
-        }
+      
+      const conflictingBookings = await Booking.find(conflictQuery);
+      
+      if (conflictingBookings.length > 0) {
+        console.log(`Found ${conflictingBookings.length} conflicting bookings`);
+        return NextResponse.json({ 
+          success: false, 
+          message: `The selected dates overlap with existing bookings. There are ${conflictingBookings.length} booking(s) that conflict with your requested dates.`
+        }, { status: 409 });
       }
     }
     
