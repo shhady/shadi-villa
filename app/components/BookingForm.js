@@ -530,11 +530,11 @@ const BookingForm = ({ onBookingCreated }) => {
         const startDay = new Date(formData.startDate).setHours(0, 0, 0, 0);
         const endDay = new Date(formData.endDate).setHours(0, 0, 0, 0);
         
-        if (startDay !== endDay) {
-          toast.error('Pool bookings must be for a single day only');
-          setLoading(false);
-          return;
-        }
+        // if (startDay !== endDay) {
+        //   toast.error('Pool bookings must be for a single day only');
+        //   setLoading(false);
+        //   return;
+        // }
         
         // Check if this is a villa start date
         if (isVillaStartDate(formData.startDate)) {
