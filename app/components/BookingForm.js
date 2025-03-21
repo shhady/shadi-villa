@@ -727,7 +727,7 @@ const BookingForm = ({ onBookingCreated }) => {
     
     // Check if day is a checkout day - this takes precedence over other statuses
     if (isCheckoutDay(date)) {
-      return `bg-green-300 border-2 border-dashed border-blue-300 ${adminClickableClass}`; // Available but with special indicator
+      return `bg-green-300 `; // Available but with special indicator
     }
     
     // Note: We no longer check for rejected dates as they're treated as available
@@ -956,13 +956,13 @@ const BookingForm = ({ onBookingCreated }) => {
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
+    <div className="bg-white">
       <h2 className="text-xl font-semibold mb-4">Booking</h2>
       
       {/* Custom Calendar */}
       <div className="mb-6">
         <div className="mx-auto max-w-md">
-          <div className="custom-calendar border rounded-lg shadow-sm p-4">
+          <div className="custom-calendar rounded-lg shadow-sm p-4">
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-4">
               <button 
@@ -1031,29 +1031,74 @@ const BookingForm = ({ onBookingCreated }) => {
             <div className="flex items-center"><div className="w-5 h-5 bg-green-500 rounded-sm mr-1"></div> <span>Available</span></div>
             <div className="flex items-center"><div className="w-5 h-5 bg-blue-100 rounded-sm mr-1"></div> <span>Approved</span></div>
             <div className="flex items-center"><div className="w-5 h-5 bg-orange-100 rounded-sm mr-1"></div> <span>Pending</span></div>
-            <div className="flex items-center"><div className="w-5 h-5 bg-green-300 border-2 border-dashed border-blue-300 rounded-sm mr-1"></div> <span>Checkout/Check-in Day</span></div>
+            {/* <div className="flex items-center"><div className="w-5 h-5 bg-green-300 border-2 border-dashed border-blue-300 rounded-sm mr-1"></div> <span>Checkout/Check-in Day</span></div> */}
           </div>
           
           {/* Information about checkout/check-in days */}
-          <div className="mt-3 text-sm text-gray-600 p-2 bg-blue-50 rounded">
-            <p>
+          {/* <div className="mt-3 text-sm text-gray-600 p-2 bg-blue-50 rounded"> */}
+            {/* <p>
               <span className="font-semibold">Note:</span> Checkout/Check-in days (highlighted with dashed borders) are dates when pending or approved Villa+Pool bookings end and new ones can begin. 
               Villa checkout is at 12 PM, allowing new guests to check in on the same day.
               Dates won&apos;t be marked as checkout/check-in days if they&apos;re already the start date of another booking or have a Pool booking.
               Rejected bookings are treated as fully available dates with no special indicators.
             </p>
-            
+             */}
             {/* Admin-only instructions */}
-            {hasRole('admin') && (
+            {/* {hasRole('admin') && (
               <p className="mt-2 text-blue-800 font-medium">
                 Admin: Click on any pending or approved booking date in the calendar to view its full details.
               </p>
-            )}
-          </div>
+            )} */}
+          {/* </div> */}
         </div>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+          <label className="block text-sm font-medium text-gray-700">Rental Type</label>
+          <select
+            name="rentalType"
+            value={formData.rentalType}
+            onChange={handleChange}
+            required
+            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="villa_pool">Villa + Pool</option>
+            <option value="pool">Pool Only</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Check-in Date</label>
+            <input
+              type="date"
+              name="startDate"
+              value={formatDateForInput(formData.startDate)}
+              onChange={handleDateInputChange}
+              required
+              min={formatDateForInput(new Date())}
+              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Check-out Date</label>
+            <input
+              type="date"
+              name="endDate"
+              value={formatDateForInput(formData.endDate)}
+              onChange={handleDateInputChange}
+              required
+              min={formatDateForInput(formData.rentalType === 'pool' ? formData.startDate : new Date(new Date(formData.startDate).setDate(new Date(formData.startDate).getDate() + 1)))}
+              disabled={formData.rentalType === 'pool'}
+              className={`h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
+            />
+            {formData.rentalType === 'pool' && (
+              <p className="text-sm text-gray-500 mt-1">Pool bookings are for 1 day only.</p>
+            )}
+          </div>
+        </div>
+        
         <div>
           <label className="block text-sm font-medium text-gray-700">Guest Name</label>
           <input
@@ -1062,7 +1107,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.guestName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         
@@ -1074,7 +1119,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.phoneNumber}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g. +1 234 567 8900"
           />
         </div>
@@ -1089,7 +1134,7 @@ const BookingForm = ({ onBookingCreated }) => {
               value={formData.adults}
               onChange={handleChange}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           
@@ -1101,73 +1146,33 @@ const BookingForm = ({ onBookingCreated }) => {
               min="0"
               value={formData.children}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         </div>
         
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Rental Type</label>
-          <select
-            name="rentalType"
-            value={formData.rentalType}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="villa_pool">Villa + Pool</option>
-            <option value="pool">Pool Only</option>
-          </select>
-        </div>
+    
+        
+      
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Check-in Date</label>
-            <input
-              type="date"
-              name="startDate"
-              value={formatDateForInput(formData.startDate)}
-              onChange={handleDateInputChange}
-              required
-              min={formatDateForInput(new Date())}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Check-out Date</label>
-            <input
-              type="date"
-              name="endDate"
-              value={formatDateForInput(formData.endDate)}
-              onChange={handleDateInputChange}
-              required
-              min={formatDateForInput(formData.rentalType === 'pool' ? formData.startDate : new Date(new Date(formData.startDate).setDate(new Date(formData.startDate).getDate() + 1)))}
-              disabled={formData.rentalType === 'pool'}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
-            />
-            {formData.rentalType === 'pool' && (
-              <p className="text-sm text-gray-500 mt-1">Pool bookings are for 1 day only.</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Duration (days)</label>
+            <label className="block text-sm font-medium text-gray-700">Duration (nights)</label>
             <input
               type="number"
               name="duration"
               min="1"
               value={formData.duration}
               onChange={handleChange}
-              disabled={formData.rentalType === 'pool'}
+              disabled={true}
               required
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
+              className={`h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100`}
             />
-            {formData.rentalType === 'pool' && (
-              <p className="text-sm text-gray-500 mt-1">Duration is fixed at 1 day for pool bookings.</p>
-            )}
+            <p className="text-sm text-gray-500 mt-1">
+              {formData.rentalType === 'pool' 
+                ? "Duration is fixed at 1 day for pool bookings." 
+                : "Duration is automatically calculated from the selected dates."}
+            </p>
           </div>
           
           <div>
@@ -1179,7 +1184,7 @@ const BookingForm = ({ onBookingCreated }) => {
               value={formData.amount}
               onChange={handleChange}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         </div>
