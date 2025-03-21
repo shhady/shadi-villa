@@ -327,9 +327,15 @@ const BookingForm = ({ onBookingCreated }) => {
 
   // Check if a date is unavailable for the selected rental type
   const isDateUnavailable = (date, rentalType) => {
-    // Normalize the date to start of day for comparison
+    // Normalize the date to start of day in UTC for consistent comparison
     const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
+    // Use UTC methods to avoid timezone shifts
+    const normalizedDate = new Date(Date.UTC(
+      dateToCheck.getFullYear(),
+      dateToCheck.getMonth(),
+      dateToCheck.getDate(),
+      0, 0, 0, 0
+    ));
     
     // Check if date is rejected - rejected dates are considered available
     if (isDateRejected(date)) {
@@ -344,17 +350,27 @@ const BookingForm = ({ onBookingCreated }) => {
     
     if (rentalType === 'pool') {
       return unavailableDates.pool.some(unavailableDate => {
-        // Normalize the unavailable date
-        const unavailableDateNormalized = new Date(unavailableDate);
-        unavailableDateNormalized.setHours(0, 0, 0, 0);
-        return unavailableDateNormalized.getTime() === dateToCheck.getTime();
+        // Normalize the unavailable date to UTC
+        const unavailableDateObj = new Date(unavailableDate);
+        const unavailableDateNormalized = new Date(Date.UTC(
+          unavailableDateObj.getFullYear(),
+          unavailableDateObj.getMonth(),
+          unavailableDateObj.getDate(),
+          0, 0, 0, 0
+        ));
+        return unavailableDateNormalized.getTime() === normalizedDate.getTime();
       });
     } else { // villa_pool
       return unavailableDates.villa.some(unavailableDate => {
-        // Normalize the unavailable date
-        const unavailableDateNormalized = new Date(unavailableDate);
-        unavailableDateNormalized.setHours(0, 0, 0, 0);
-        return unavailableDateNormalized.getTime() === dateToCheck.getTime();
+        // Normalize the unavailable date to UTC
+        const unavailableDateObj = new Date(unavailableDate);
+        const unavailableDateNormalized = new Date(Date.UTC(
+          unavailableDateObj.getFullYear(),
+          unavailableDateObj.getMonth(),
+          unavailableDateObj.getDate(),
+          0, 0, 0, 0
+        ));
+        return unavailableDateNormalized.getTime() === normalizedDate.getTime();
       });
     }
   };
@@ -362,7 +378,13 @@ const BookingForm = ({ onBookingCreated }) => {
   // Check if a date is a checkout day (any villa+pool booking end date, not pool bookings)
   const isCheckoutDay = (date) => {
     const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
+    // Use UTC methods to avoid timezone shifts
+    const normalizedDate = new Date(Date.UTC(
+      dateToCheck.getFullYear(),
+      dateToCheck.getMonth(),
+      dateToCheck.getDate(),
+      0, 0, 0, 0
+    ));
     
     // First check if there's a pool booking on this date - if so, it's NOT a checkout day
     // regardless of whether it's also a villa_pool end date
@@ -373,8 +395,14 @@ const BookingForm = ({ onBookingCreated }) => {
       // Check if it's a pool booking
       if (booking.rentalType === 'pool') {
         const bookingDate = new Date(booking.startDate); // For pool bookings, start = end
-        bookingDate.setHours(0, 0, 0, 0);
-        return bookingDate.getTime() === dateToCheck.getTime();
+        // Normalize to UTC
+        const normalizedBookingDate = new Date(Date.UTC(
+          bookingDate.getFullYear(),
+          bookingDate.getMonth(),
+          bookingDate.getDate(),
+          0, 0, 0, 0
+        ));
+        return normalizedBookingDate.getTime() === normalizedDate.getTime();
       }
       
       return false;
@@ -390,8 +418,14 @@ const BookingForm = ({ onBookingCreated }) => {
       if (booking.status === 'rejected') return false;
       
       const startDate = new Date(booking.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      return startDate.getTime() === dateToCheck.getTime();
+      // Normalize to UTC
+      const normalizedStartDate = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+      ));
+      return normalizedStartDate.getTime() === normalizedDate.getTime();
     });
     
     // If it's a start date of any booking, it can't be a checkout day
@@ -406,8 +440,14 @@ const BookingForm = ({ onBookingCreated }) => {
       if (booking.rentalType !== 'villa_pool') return false;
       
       const endDate = new Date(booking.endDate);
-      endDate.setHours(0, 0, 0, 0);
-      return endDate.getTime() === dateToCheck.getTime();
+      // Normalize to UTC
+      const normalizedEndDate = new Date(Date.UTC(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        0, 0, 0, 0
+      ));
+      return normalizedEndDate.getTime() === normalizedDate.getTime();
     });
     
     if (isBookingEndDate) return true;
@@ -416,22 +456,48 @@ const BookingForm = ({ onBookingCreated }) => {
     if (unavailableDates.villaEndDates && unavailableDates.villaEndDates.length > 0) {
       // We need to cross-reference with the bookings to exclude end dates of rejected bookings and pool bookings
       const isEndDateOfNonRejectedVillaBooking = unavailableDates.villaEndDates.some(endDate => {
-        const normalizedEndDate = new Date(endDate);
-        normalizedEndDate.setHours(0, 0, 0, 0);
+        const endDateObj = new Date(endDate);
+        // Normalize to UTC
+        const normalizedEndDate = new Date(Date.UTC(
+          endDateObj.getFullYear(),
+          endDateObj.getMonth(),
+          endDateObj.getDate(),
+          0, 0, 0, 0
+        ));
         
-        if (normalizedEndDate.getTime() !== dateToCheck.getTime()) return false;
+        if (normalizedEndDate.getTime() !== normalizedDate.getTime()) return false;
         
         // End date matches, now check if it belongs to a rejected booking
-        const isRejectedBookingEndDate = bookings.some(booking => 
-          booking.status === 'rejected' && 
-          new Date(booking.endDate).setHours(0, 0, 0, 0) === dateToCheck.getTime()
-        );
+        const isRejectedBookingEndDate = bookings.some(booking => {
+          if (booking.status === 'rejected') {
+            const endDate = new Date(booking.endDate);
+            // Normalize to UTC
+            const bookingEndDate = new Date(Date.UTC(
+              endDate.getFullYear(),
+              endDate.getMonth(),
+              endDate.getDate(),
+              0, 0, 0, 0
+            ));
+            return bookingEndDate.getTime() === normalizedDate.getTime();
+          }
+          return false;
+        });
         
         // Also check if it belongs to a pool booking (which occupy the full day)
-        const isPoolBookingEndDate = bookings.some(booking => 
-          booking.rentalType === 'pool' && 
-          new Date(booking.endDate).setHours(0, 0, 0, 0) === dateToCheck.getTime()
-        );
+        const isPoolBookingEndDate = bookings.some(booking => {
+          if (booking.rentalType === 'pool') {
+            const endDate = new Date(booking.endDate);
+            // Normalize to UTC
+            const bookingEndDate = new Date(Date.UTC(
+              endDate.getFullYear(),
+              endDate.getMonth(),
+              endDate.getDate(),
+              0, 0, 0, 0
+            ));
+            return bookingEndDate.getTime() === normalizedDate.getTime();
+          }
+          return false;
+        });
         
         // Return true only for non-rejected, non-pool booking end dates
         return !isRejectedBookingEndDate && !isPoolBookingEndDate;
@@ -637,9 +703,18 @@ const BookingForm = ({ onBookingCreated }) => {
   // Format date as yyyy-MM-dd for date inputs
   const formatDateForInput = (date) => {
     const d = new Date(date);
-    let month = '' + (d.getMonth() + 1);
-    let day = '' + d.getDate();
-    const year = d.getFullYear();
+    // Normalize to UTC to avoid timezone issues
+    const normalizedDate = new Date(Date.UTC(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+      0, 0, 0, 0
+    ));
+    
+    // Extract date components from normalized date
+    let month = '' + (normalizedDate.getUTCMonth() + 1);
+    let day = '' + normalizedDate.getUTCDate();
+    const year = normalizedDate.getUTCFullYear();
     
     if (month.length < 2) month = '0' + month;
     if (day.length < 2) day = '0' + day;
@@ -649,7 +724,9 @@ const BookingForm = ({ onBookingCreated }) => {
 
   // Add custom formatting for the calendar
   const formatShortWeekday = (locale, date) => {
-    return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getDay()];
+    // Use UTC day to avoid timezone issues
+    const utcDay = date.getUTCDay();
+    return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][utcDay];
   };
 
   // Function to generate calendar data for a specific month and year
@@ -704,10 +781,24 @@ const BookingForm = ({ onBookingCreated }) => {
     if (!date) return '';
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Normalize today to UTC midnight
+    const normalizedToday = new Date(Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0, 0, 0, 0
+    ));
+    
+    // Normalize the input date to UTC midnight
+    const normalizedDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      0, 0, 0, 0
+    ));
     
     // If date is before today, return gray
-    if (date < today) {
+    if (normalizedDate < normalizedToday) {
       return 'bg-gray-200';
     }
     
@@ -724,8 +815,14 @@ const BookingForm = ({ onBookingCreated }) => {
     const poolBooking = bookings.find(booking => {
       if (booking.status !== 'rejected' && booking.rentalType === 'pool') {
         const bookingDate = new Date(booking.startDate);
-        bookingDate.setHours(0, 0, 0, 0);
-        return bookingDate.getTime() === date.getTime();
+        // Normalize the booking date to UTC midnight
+        const normalizedBookingDate = new Date(Date.UTC(
+          bookingDate.getFullYear(),
+          bookingDate.getMonth(),
+          bookingDate.getDate(),
+          0, 0, 0, 0
+        ));
+        return normalizedBookingDate.getTime() === normalizedDate.getTime();
       }
       return false;
     });
@@ -769,8 +866,13 @@ const BookingForm = ({ onBookingCreated }) => {
   const findBookingForDate = (date) => {
     if (!bookings || bookings.length === 0) return null;
     
-    const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
+    // Normalize the input date to UTC midnight
+    const normalizedDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      0, 0, 0, 0
+    ));
     
     // Look for bookings where this date falls within their range
     // Only consider pending and approved bookings
@@ -778,12 +880,24 @@ const BookingForm = ({ onBookingCreated }) => {
       if (booking.status === 'rejected') return false;
       
       const bookingStartDate = new Date(booking.startDate);
-      bookingStartDate.setHours(0, 0, 0, 0);
+      // Normalize to UTC midnight
+      const normalizedStartDate = new Date(Date.UTC(
+        bookingStartDate.getFullYear(),
+        bookingStartDate.getMonth(),
+        bookingStartDate.getDate(),
+        0, 0, 0, 0
+      ));
       
       const bookingEndDate = new Date(booking.endDate);
-      bookingEndDate.setHours(0, 0, 0, 0);
+      // Normalize to UTC midnight
+      const normalizedEndDate = new Date(Date.UTC(
+        bookingEndDate.getFullYear(),
+        bookingEndDate.getMonth(),
+        bookingEndDate.getDate(),
+        0, 0, 0, 0
+      ));
       
-      return dateToCheck >= bookingStartDate && dateToCheck <= bookingEndDate;
+      return normalizedDate >= normalizedStartDate && normalizedDate <= normalizedEndDate;
     });
   };
 
@@ -837,8 +951,16 @@ const BookingForm = ({ onBookingCreated }) => {
 
   // Format date for display in modal
   const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    // Create a normalized date that removes time component influence on display
+    const normalizedDate = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      0, 0, 0, 0
+    ));
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return normalizedDate.toLocaleDateString(undefined, options);
   };
 
   // Get status badge color for modal
