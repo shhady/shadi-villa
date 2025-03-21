@@ -356,15 +356,9 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                   )}
                 </div>
                 
-                <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+                <div className="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
                   {/* View Details Button */}
-                  <button
-                    onClick={() => handleViewDetails(booking)}
-                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    View Details
-                  </button>
-
+                  
                   {/* Admin actions */}
                   {hasRole('admin') && booking.status === 'pending' && (
                     <>
@@ -384,7 +378,13 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                       </button>
                     </>
                   )}
-                  
+                  <button
+                    onClick={() => handleViewDetails(booking)}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    View Details
+                  </button>
+
                   {/* Allow admin to change approved bookings to rejected */}
                   {hasRole('admin') && booking.status === 'approved' && (
                     <button
