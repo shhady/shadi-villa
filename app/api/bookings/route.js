@@ -167,6 +167,10 @@ export async function POST(request) {
       bookingEndDate = new Date(bookingStartDate.getTime());
       bookingDuration = 1;
       console.log('Pool booking - setting end date same as start date:', bookingEndDate.toISOString());
+      
+      // Ensure both startDate and endDate are set to the start of day to avoid timezone issues
+      bookingStartDate.setUTCHours(0, 0, 0, 0);
+      bookingEndDate.setUTCHours(0, 0, 0, 0);
     } else {
       // For villa bookings, use the provided end date - also normalized to midnight UTC
       const inputEndDate = new Date(endDate);

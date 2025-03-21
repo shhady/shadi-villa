@@ -93,21 +93,27 @@ function getUnavailableDatesFromBookings(bookings, includeEndDate = false) {
   const unavailableDates = [];
   
   bookings.forEach(booking => {
+    // Create new Date objects to avoid mutation issues
     const start = new Date(booking.startDate);
     const end = new Date(booking.endDate);
     
     // For pool bookings, we need to handle start and end date the same
     // Since it's a single day booking
     if (booking.rentalType === 'pool') {
-      const poolDate = new Date(start);
-      poolDate.setHours(0, 0, 0, 0);
+      // Normalize to start of day in UTC to avoid timezone issues
+      const poolDate = new Date(Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate(),
+        0, 0, 0, 0
+      ));
       unavailableDates.push(poolDate.toISOString());
       return; // Skip the rest of the logic for pool bookings
     }
     
-    // Reset hours to ensure comparisons are date-only
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
+    // Reset hours to ensure comparisons are date-only (in UTC)
+    start.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(0, 0, 0, 0);
     
     // For villa bookings, add all dates between start and end (optionally excluding end date)
     const current = new Date(start);
@@ -116,7 +122,7 @@ function getUnavailableDatesFromBookings(bookings, includeEndDate = false) {
       // Add current date to unavailable dates (as ISO string for consistent comparison)
       unavailableDates.push(current.toISOString());
       
-      // Increment date by one day
+      // Increment date by one day by creating a new Date object (to avoid mutation)
       const nextDay = new Date(current);
       nextDay.setDate(nextDay.getDate() + 1);
       current.setTime(nextDay.getTime());

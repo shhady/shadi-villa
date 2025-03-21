@@ -104,25 +104,31 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
 
   // Format date for display
   const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    // Create a normalized date that removes time component influence on display
+    const normalizedDate = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      0, 0, 0, 0
+    ));
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return normalizedDate.toLocaleDateString(undefined, options);
   };
 
   // Helper function to get date and duration display based on rental type
   function getBookingDisplay(booking) {
-    // Format dates properly with local date method
-    const formatLocalDate = (date) => new Date(date).toLocaleDateString();
-    
     if (booking.rentalType === 'pool') {
       // For pool bookings, display as a single day
+      // Use formatDate which normalizes the date
       return {
-        dateDisplay: formatLocalDate(booking.startDate),
+        dateDisplay: formatDate(booking.startDate),
         durationDisplay: '1 day'
       };
     } else {
       // For villa bookings, show date range and nights
       return {
-        dateDisplay: `${formatLocalDate(booking.startDate)} - ${formatLocalDate(booking.endDate)}`,
+        dateDisplay: `${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}`,
         durationDisplay: `${booking.duration} ${booking.duration === 1 ? 'night' : 'nights'}`
       };
     }

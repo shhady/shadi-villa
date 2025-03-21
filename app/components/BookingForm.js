@@ -562,11 +562,14 @@ const BookingForm = ({ onBookingCreated }) => {
       
       // Create UTC dates to ensure consistent date handling across environments
       const toUtcDate = (date) => {
-        return new Date(Date.UTC(
+        // Create a new Date object with the date components at midnight UTC
+        const utcDate = new Date(Date.UTC(
           date.getFullYear(),
           date.getMonth(),
-          date.getDate()
+          date.getDate(),
+          0, 0, 0, 0  // Explicitly set to midnight UTC
         ));
+        return utcDate;
       };
       
       // Create a copy of the form data with normalized dates to prevent time-related issues
@@ -575,7 +578,9 @@ const BookingForm = ({ onBookingCreated }) => {
         ...formData,
         guestCount: formData.adults + formData.children, // Calculate total guest count
         startDate: toUtcDate(new Date(formData.startDate)),
-        endDate: toUtcDate(new Date(formData.endDate))
+        endDate: formData.rentalType === 'pool' 
+          ? toUtcDate(new Date(formData.startDate)) // For pool bookings, use same date for both
+          : toUtcDate(new Date(formData.endDate))
       };
       
       console.log('Submitting booking with token:', token.substring(0, 10) + '...');
