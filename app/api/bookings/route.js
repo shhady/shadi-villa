@@ -141,12 +141,16 @@ export async function POST(request) {
     }
     
     // Convert string dates to Date objects and normalize time to start of day
-    const bookingStartDate = new Date(startDate);
-    bookingStartDate.setHours(0, 0, 0, 0);
-    
-    const bookingEndDate = new Date(endDate);
-    bookingEndDate.setHours(0, 0, 0, 0);
-    
+    const bookingStartDate = new Date(Date.UTC(
+      new Date(startDate).getUTCFullYear(),
+      new Date(startDate).getUTCMonth(),
+      new Date(startDate).getUTCDate()
+    ));
+    const bookingEndDate = new Date(Date.UTC(
+      new Date(endDate).getUTCFullYear(),
+      new Date(endDate).getUTCMonth(),
+      new Date(endDate).getUTCDate()
+    ));
     // Validate rental type specific rules
     if (rentalType === 'pool') {
       // Pool bookings must be for a single day only

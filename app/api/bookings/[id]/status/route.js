@@ -19,7 +19,7 @@ const logRequestDetails = (request, method, id) => {
 
 // Update booking status
 export async function PATCH(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   
   // Log request details
   logRequestDetails(request, 'PATCH', id);
