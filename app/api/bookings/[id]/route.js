@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/utils/dbConnect';
 import Booking from '../../../../lib/models/Booking';
 import { authenticateUser, getTokenFromHeaders } from '../../../../lib/utils/auth';
+export const dynamic = 'force-dynamic';
 
 // Helper function to log headers and extract token
 const logRequestDetails = (request, method, id) => {
@@ -18,7 +19,7 @@ const logRequestDetails = (request, method, id) => {
 
 // Get booking by ID
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   
   // Log request details
   logRequestDetails(request, 'GET', id);
@@ -76,7 +77,7 @@ export async function PATCH(request, { params }) {
   try {
     await dbConnect();
     
-    const { id } = params;
+    const { id } = await params;
     
     // Authenticate user
     const user = authenticateUser(request);
@@ -150,7 +151,7 @@ export async function PATCH(request, { params }) {
 
 // Delete booking
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   
   // Log request details
   logRequestDetails(request, 'DELETE', id);

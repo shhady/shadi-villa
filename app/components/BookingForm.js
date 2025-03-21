@@ -1098,7 +1098,6 @@ const BookingForm = ({ onBookingCreated }) => {
             )}
           </div>
         </div>
-        
         <div>
           <label className="block text-sm font-medium text-gray-700">Guest Name</label>
           <input
@@ -1156,7 +1155,7 @@ const BookingForm = ({ onBookingCreated }) => {
       
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+        <div>
             <label className="block text-sm font-medium text-gray-700">Duration (nights)</label>
             <input
               type="number"

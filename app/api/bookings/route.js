@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '../../../lib/utils/dbConnect';
 import Booking from '../../../lib/models/Booking';
 import { authenticateUser, getTokenFromHeaders } from '../../../lib/utils/auth';
+export const dynamic = 'force-dynamic';
 
 // Debug helper to log headers
 const logHeadersAndToken = (request) => {
