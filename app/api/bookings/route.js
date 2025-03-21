@@ -146,23 +146,30 @@ export async function POST(request) {
       new Date(startDate).getUTCMonth(),
       new Date(startDate).getUTCDate()
     ));
-    const bookingEndDate = new Date(Date.UTC(
-      new Date(endDate).getUTCFullYear(),
-      new Date(endDate).getUTCMonth(),
-      new Date(endDate).getUTCDate()
-    ));
+    
+    // For pool bookings, ensure the end date is the same as the start date
+    // This prevents issues with date display showing end date as day before start date
+    let bookingEndDate;
+    let bookingDuration;
+    
+    if (rentalType === 'pool') {
+      // For pool bookings, set end date to be the same as start date and duration to 1
+      bookingEndDate = new Date(bookingStartDate);
+      bookingDuration = 1;
+      console.log('Pool booking - setting end date same as start date:', bookingEndDate);
+    } else {
+      // For villa bookings, use the provided end date
+      bookingEndDate = new Date(Date.UTC(
+        new Date(endDate).getUTCFullYear(),
+        new Date(endDate).getUTCMonth(),
+        new Date(endDate).getUTCDate()
+      ));
+      bookingDuration = duration;
+    }
+    
     // Validate rental type specific rules
     if (rentalType === 'pool') {
-      // Pool bookings must be for a single day only
-      const startDay = bookingStartDate.getTime();
-      const endDay = bookingEndDate.getTime();
-      
-      if (startDay !== endDay) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Pool bookings must be for a single day only' 
-        }, { status: 400 });
-      }
+      // Pool bookings must be for a single day only - this is now enforced by setting bookingEndDate = bookingStartDate
       
       // Now check if there's a villa booking that starts on this date
       // Pool bookings are not allowed on start dates of villa bookings
@@ -405,7 +412,7 @@ export async function POST(request) {
       rentalType,
       startDate: bookingStartDate,
       endDate: bookingEndDate,
-      duration,
+      duration: bookingDuration,
       amount,
       details: details || '',
       // If admin creates booking, automatically approve it
@@ -418,6 +425,7 @@ export async function POST(request) {
       rentalType: booking.rentalType,
       startDate: booking.startDate.toISOString(),
       endDate: booking.endDate.toISOString(),
+      duration: booking.duration,
       status: booking.status
     });
     

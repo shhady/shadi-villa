@@ -108,6 +108,25 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Helper function to get booking display dates and duration text
+  const getBookingDatesDisplay = (booking) => {
+    // For pool bookings, the start and end date should be the same
+    // This fixes the issue where end date is displayed as a day before the start date
+    if (booking.rentalType === 'pool') {
+      const date = formatDate(booking.startDate);
+      return {
+        dateRange: `${date}`,
+        durationText: `(1 day)`
+      };
+    } else {
+      // For villa_pool bookings, show the range with both start and end dates
+      return {
+        dateRange: `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)}`,
+        durationText: `(${booking.duration} ${booking.duration === 1 ? 'day' : 'days'})`
+      };
+    }
+  };
+
   // Handle status change (approve/reject)
   const handleStatusChange = async (bookingId, newStatus) => {
     // For rejection, show modal to get rejection reason
@@ -309,7 +328,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
             <div className="absolute top-4 right-4">
               <ShareButton 
                 title={`Booking for ${booking.guestName}`} 
-                description={`${getRentalTypeDisplay(booking.rentalType)} booking from ${formatDate(booking.startDate)} to ${formatDate(booking.endDate)}`}
+                description={`${getRentalTypeDisplay(booking.rentalType)} booking from ${getBookingDatesDisplay(booking).dateRange}`}
                 iconOnly={true}
               />
             </div>
@@ -340,7 +359,9 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                   </div>
                   <div className="mt-2 flex items-center text-sm text-gray-500">
                     <p>
-                      {formatDate(booking.startDate)} — {formatDate(booking.endDate)} ({booking.duration} days)
+                      {booking.rentalType === 'pool' 
+                        ? `${formatDate(booking.startDate)} (1 day)` 
+                        : `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)} (${booking.duration} ${booking.duration === 1 ? 'day' : 'days'})`}
                     </p>
                   </div>
                   {/* Display agent name (admin can see this or on their own bookings) */}
@@ -511,12 +532,12 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className=" font-medium text-gray-500">Check-out:</h4>
-                  <p className="font-bold">{formatDate(detailsBooking.endDate)}</p>
+                  <p className="font-bold">{detailsBooking.rentalType === 'pool' ? formatDate(detailsBooking.startDate) : formatDate(detailsBooking.endDate)}</p>
                 </div>
                      
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Duration:</h4>
-                  <p className="font-bold">{detailsBooking.duration} nights</p>
+                  <p className="font-bold">{detailsBooking.rentalType === 'pool' ? '1 day' : `${detailsBooking.duration} ${detailsBooking.duration === 1 ? 'night' : 'nights'}`}</p>
                 </div>
                 
 
