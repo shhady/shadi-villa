@@ -7,7 +7,7 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import BookingsList from '../../components/BookingsList';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-
+import BookingCalendarForAdmin from '../../components/BookingCalendarForAdmin';
 export default function AdminDashboard() {
   const { getToken } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -126,9 +126,9 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
-
+          <BookingCalendarForAdmin />
           {/* Stats */}
-          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
                 <div className="flex items-center">
