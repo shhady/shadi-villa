@@ -788,14 +788,11 @@ const BookingForm = ({ onBookingCreated }) => {
     const startDateString = new Date(formData.startDate).toISOString().split('T')[0];
     const endDateString = new Date(formData.endDate).toISOString().split('T')[0];
     
-    // Check for current date, start date, and end date classes
-    if (currentDateString === startDateString) {
-      return `bg-blue-600 text-white ${adminClickableClass}`; // Selected start date
-    }
-    
-    if (currentDateString === endDateString) {
-      return `bg-blue-400 text-white ${adminClickableClass}`; // Selected end date
-    }
+    // Only highlight the specific selected start date with a border
+    // No special color treatment for any other dates related to the selection
+    // if (currentDateString === startDateString) {
+    //   return `border-2 border-blue-600 ${adminClickableClass}`; // Just a border for selected start date
+    // }
     
     // Past dates are light gray and not clickable
     const today = new Date();
@@ -843,9 +840,6 @@ const BookingForm = ({ onBookingCreated }) => {
         // For approved bookings, use blue
         return `bg-blue-100 ${adminClickableClass}`;
       }
-      
-      // If it's the end date, show as available (green) unless it's also the start date of another booking
-      // This is handled by the isDateUnavailable check below
     }
     
     // Check for unavailable dates (start dates of bookings or dates between start and end exclusive of end)
@@ -1116,7 +1110,6 @@ const BookingForm = ({ onBookingCreated }) => {
                         day.getMonth() === new Date().getMonth() && 
                         day.getFullYear() === new Date().getFullYear() ? 'font-bold' : ''}
                       ${day ? getDayStatusClass(day) : ''}
-                      ${day && formData.startDate.toDateString() === day.toDateString() ? 'ring-2 ring-blue-600' : ''}
                     `}
                     onClick={() => day && handleDayClick(day)}
                     title={bookingTooltip}
