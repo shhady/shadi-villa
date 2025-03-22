@@ -190,7 +190,7 @@ export async function POST(request) {
     }
     
     // For both booking types, we check if the start date conflicts with another booking's start date
-    // But end dates are allowed to be another booking's start date
+    // End dates are allowed to be available unless they are another booking's start date
     
     // First, check if the proposed start date is already someone else's start date
     // This applies to both pool and villa bookings
@@ -209,30 +209,41 @@ export async function POST(request) {
       }, { status: 409 });
     }
     
-    // For both booking types, check if any date between start and end (excluding end) is already booked
-    // This is now the same logic for both pool and villa bookings
+    // For both booking types, check if any date between start and end (excluding end) 
+    // is already the start date of another booking, or falls within another booking's range (excluding end date)
     const allBookingDates = [];
     const currentDate = new Date(bookingStartDate);
     const endDateValue = new Date(bookingEndDate);
     
-    // Add all dates excluding the end date (endDateValue)
+    // Add all dates EXCLUDING the end date (endDateValue)
     while (currentDate < endDateValue) {
       allBookingDates.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
     if (allBookingDates.length > 0) {
-      // Create a query to check if any booking (both pool and villa) 
-      // has start dates on any of our dates (excluding our end date)
+      // Create a query to check for conflicts
+      // A conflict is when our date (not including end date):
+      // 1. Is the start date of another booking, OR
+      // 2. Is between another booking's start and end date (exclusive of end)
       const orConditions = allBookingDates.map(date => ({
-        $and: [
-          // Check if this date falls between another booking's start and end (exclusive of end)
-          { startDate: { $lte: new Date(date) } },
-          { endDate: { $gt: new Date(date) } }
+        $or: [
+          // If date is another booking's start date
+          {
+            startDate: {
+              $gte: new Date(new Date(date).setUTCHours(0, 0, 0, 0)),
+              $lt: new Date(new Date(date).setUTCHours(23, 59, 59, 999))
+            }
+          },
+          // If date falls between another booking's start and end (exclusive of end)
+          {
+            startDate: { $lt: new Date(date) },
+            endDate: { $gt: new Date(date) }
+          }
         ]
       }));
       
-      // Since we want to block any date that falls within another booking's range (except end dates)
+      // Since we want to block any date that is another booking's start date or falls within another booking's range
       const conflictQuery = {
         status: { $in: ['approved', 'pending'] },
         $or: orConditions
@@ -254,22 +265,25 @@ export async function POST(request) {
       }
     }
     
-    // Special case: Allow booking pool on end date of villa_pool booking
-    if (rentalType === 'pool') {
-      // Check if this date is specifically the end date of a villa booking
-      const normalizedDate = new Date(new Date(bookingStartDate).setUTCHours(0, 0, 0, 0));
-      const isEndDateOfVillaBooking = await Booking.findOne({
-        rentalType: 'villa_pool',
-        status: { $in: ['approved', 'pending'] },
-        endDate: normalizedDate
-      });
-      
-      // If it's an end date of a villa booking, explicitly allow it
-      if (isEndDateOfVillaBooking) {
-        console.log('Allowing pool booking on villa checkout day');
-        // Continue with booking creation - no conflict
+    // Now, check if our end date is another booking's start date (not allowed)
+    const endDateConflict = await Booking.findOne({
+      status: { $in: ['approved', 'pending'] },
+      startDate: {
+        $gte: new Date(new Date(bookingEndDate).setUTCHours(0, 0, 0, 0)),
+        $lt: new Date(new Date(bookingEndDate).setUTCHours(23, 59, 59, 999))
       }
+    });
+    
+    if (endDateConflict) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Selected end date (${new Date(bookingEndDate).toISOString().split('T')[0]}) is not available as it's the start date of another booking.`
+      }, { status: 409 });
     }
+    
+    // Special case: Allow booking pool on end date of villa_pool booking
+    // This check is no longer needed since end dates are always available unless they are
+    // the start date of another booking, which is checked above
     
     // Log the actual dates that will be stored to help with debugging
     console.log('Dates to be stored in booking:', {

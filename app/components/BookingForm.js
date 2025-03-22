@@ -221,7 +221,7 @@ const BookingForm = ({ onBookingCreated }) => {
     const selectedDate = new Date(value);
     
     if (name === 'startDate') {
-      // First check if date is unavailable for the selected rental type
+      // First check if date is unavailable
       if (isDateUnavailable(selectedDate)) {
         toast.error(`This date is not available for booking`);
         return;
@@ -291,7 +291,14 @@ const BookingForm = ({ onBookingCreated }) => {
         return;
       }
       
+      // Check if the selected end date is the start date of another booking
+      if (isDateUnavailable(selectedDate)) {
+        toast.error(`This date is not available as it's the start date of another booking`);
+        return;
+      }
+      
       // For villa bookings, check if any of the days in between are unavailable
+      // But don't check the end date itself (which is allowed to be available)
       const daysToCheck = [];
       const tempDate = new Date(formData.startDate);
       
@@ -300,7 +307,7 @@ const BookingForm = ({ onBookingCreated }) => {
         tempDate.setDate(tempDate.getDate() + 1);
       }
       
-      // Check if any day in the range is unavailable
+      // Check if any day in the range is unavailable (excluding the end date)
       const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
       if (unavailableDay) {
         toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
@@ -385,15 +392,9 @@ const BookingForm = ({ onBookingCreated }) => {
       return false;
     }
     
-    // Check if this date is the end date of a booking (villa or pool)
-    // End dates of bookings should be available for new bookings to start
-    if (isCheckoutDay(date)) {
-      return false; // Always allow booking on checkout days
-    }
-    
-    // Now check if the date falls within any booking's range (excluding end dates)
-    // This applies to both pool and villa bookings with the same logic - if a date is
-    // unavailable for one type, it's unavailable for all types
+    // A date is unavailable if:
+    // 1. It is the start date of any booking, OR
+    // 2. It falls between start and end date of any booking (exclusive of end date)
     return bookings.some(booking => {
       // Skip rejected bookings
       if (booking.status === 'rejected') return false;
@@ -415,12 +416,18 @@ const BookingForm = ({ onBookingCreated }) => {
         0, 0, 0, 0
       ));
       
-      // Date is unavailable if it falls between start and end (exclusive of end)
-      return normalizedDate >= startNormalized && normalizedDate < endNormalized;
+      // Check if this date is the start date of a booking
+      if (normalizedDate.getTime() === startNormalized.getTime()) {
+        return true;
+      }
+      
+      // Check if this date falls between start and end (exclusive of end)
+      return normalizedDate > startNormalized && normalizedDate < endNormalized;
     });
   };
 
   // Check if a date is a checkout day (end date of any booking)
+  // This function is kept for reference but no longer used for availability
   const isCheckoutDay = (date) => {
     // Normalize the date to start of day in UTC for consistent comparison
     const dateToCheck = new Date(date);
@@ -431,8 +438,7 @@ const BookingForm = ({ onBookingCreated }) => {
       0, 0, 0, 0
     ));
     
-    // Check if any booking (pool or villa) has this date as its end date
-    // Only consider pending and approved bookings, not rejected ones
+    // Check if any booking has this date as its end date
     return bookings.some(booking => {
       // Skip rejected bookings
       if (booking.status === 'rejected') return false;
@@ -588,10 +594,18 @@ const BookingForm = ({ onBookingCreated }) => {
           tempDate.setDate(tempDate.getDate() + 1);
         }
         
-        // Check if any day in the range is unavailable
+        // Don't include the end date in the check - end dates can be booked
+        // unless they are the start date of another booking
         const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
         if (unavailableDay) {
           toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
+          setLoading(false);
+          return;
+        }
+        
+        // Check if the end date is a start date of another booking
+        if (isDateUnavailable(formData.endDate)) {
+          toast.error(`The selected end date is not available as it's the start date of another booking.`);
           setLoading(false);
           return;
         }
@@ -758,7 +772,7 @@ const BookingForm = ({ onBookingCreated }) => {
   
   // Get CSS class for calendar day status, with admin-specific handling
   const getDayStatusClass = (date) => {
-    // First normalize the date to UTC midnight for comparison
+    // First normalize the date to start of day in UTC for comparison
     const normalizedDate = new Date(Date.UTC(
       date.getFullYear(),
       date.getMonth(),
@@ -793,59 +807,61 @@ const BookingForm = ({ onBookingCreated }) => {
     // Find a booking for this date 
     const booking = findBookingForDate(date);
     if (booking) {
-      // Pool booking is a special case (now treated the same as villa - blocked on start date but not end date)
-      if (booking.rentalType === 'pool') {
-        // Get booking start and end dates normalized to UTC
-        const startDate = new Date(booking.startDate);
-        const normalizedStartDate = new Date(Date.UTC(
-          startDate.getFullYear(),
-          startDate.getMonth(),
-          startDate.getDate(),
-          0, 0, 0, 0
-        ));
-        
-        const endDate = new Date(booking.endDate);
-        const normalizedEndDate = new Date(Date.UTC(
-          endDate.getFullYear(),
-          endDate.getMonth(),
-          endDate.getDate(),
-          0, 0, 0, 0
-        ));
-        
-        // If it's a pool booking end date, treat as available but with special indicator
-        if (normalizedDate.getTime() === normalizedEndDate.getTime()) {
-          return `bg-green-300 ${adminClickableClass}`;
-        }
-        
-        // Check status of the pool booking
+      // For both pool and villa_pool bookings, show start date as unavailable
+      const startDate = new Date(booking.startDate);
+      const normalizedStartDate = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      const endDate = new Date(booking.endDate);
+      const normalizedEndDate = new Date(Date.UTC(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      // If this is a start date, mark as unavailable
+      if (normalizedDate.getTime() === normalizedStartDate.getTime()) {
+        // For pending bookings, use orange
         if (booking.status === 'pending') {
-          return `bg-orange-100 ${adminClickableClass}`; // Pending pools should be orange/yellow
+          return `bg-orange-100 ${adminClickableClass}`;
         }
-        // Must be an approved pool booking
+        // For approved bookings, use blue
         return `bg-blue-100 ${adminClickableClass}`;
       }
+      
+      // For dates between start and end (exclusive of end), also block them
+      if (normalizedDate > normalizedStartDate && normalizedDate < normalizedEndDate) {
+        // For pending bookings, use orange
+        if (booking.status === 'pending') {
+          return `bg-orange-100 ${adminClickableClass}`;
+        }
+        // For approved bookings, use blue
+        return `bg-blue-100 ${adminClickableClass}`;
+      }
+      
+      // If it's the end date, show as available (green) unless it's also the start date of another booking
+      // This is handled by the isDateUnavailable check below
     }
     
-    // Check if day is a checkout day - this takes precedence over other statuses
-    if (isCheckoutDay(date)) {
-      return `bg-green-300 ${adminClickableClass}`; // Available but with special indicator
-    }
-    
-    // Note: We no longer check for rejected dates as they're treated as available
-    
-    // Check for pending dates (light orange/peach)
-    if (isDatePending(date)) {
-      return `bg-orange-100 ${adminClickableClass}`;
-    }
-    
-    // Check for approved dates (light blue)
-    if (isDateApproved(date)) {
-      return `bg-blue-100 ${adminClickableClass}`;
-    }
-    
-    // If date is unavailable for other reasons
+    // Check for unavailable dates (start dates of bookings or dates between start and end exclusive of end)
     if (isDateUnavailable(date)) {
-      return `bg-blue-100 ${adminClickableClass}`; // Same as approved
+      // If the date is a start date or within a booking (not an end date), it's unavailable
+      // For pending dates (light orange/peach)
+      if (isDatePending(date)) {
+        return `bg-orange-100 ${adminClickableClass}`;
+      }
+      
+      // For approved dates (light blue)
+      if (isDateApproved(date)) {
+        return `bg-blue-100 ${adminClickableClass}`;
+      }
+      
+      return `bg-blue-100 ${adminClickableClass}`; // Generic unavailable
     }
     
     // If date is available, return green
@@ -864,8 +880,9 @@ const BookingForm = ({ onBookingCreated }) => {
       0, 0, 0, 0
     ));
     
-    // Look for bookings where this date falls within their range
-    // Only consider pending and approved bookings
+    // Look for bookings where this date:
+    // 1. Is the booking's start date, OR
+    // 2. Falls between the booking's start and end date (exclusive of end date)
     return bookings.find(booking => {
       if (booking.status === 'rejected') return false;
       
@@ -887,7 +904,13 @@ const BookingForm = ({ onBookingCreated }) => {
         0, 0, 0, 0
       ));
       
-      return normalizedDate >= normalizedStartDate && normalizedDate <= normalizedEndDate;
+      // Check if this is the start date
+      if (normalizedDate.getTime() === normalizedStartDate.getTime()) {
+        return true;
+      }
+      
+      // Check if date falls between start and end (exclusive of end)
+      return normalizedDate > normalizedStartDate && normalizedDate < normalizedEndDate;
     });
   };
 
@@ -972,17 +995,7 @@ const BookingForm = ({ onBookingCreated }) => {
 
   // Modify handleDayClick to handle admin booking view
   const handleDayClick = (date) => {
-    if (!date) return;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Don't allow selecting dates in the past
-    if (date < today) {
-      return;
-    }
-    
-    // For admin, check if this date has a booking and show details
+    // First for admin, check if there's a booking on this date and show details
     if (hasRole('admin')) {
       const bookingOnDate = findBookingForDate(date);
       if (bookingOnDate && (bookingOnDate.status === 'pending' || bookingOnDate.status === 'approved')) {
@@ -991,50 +1004,7 @@ const BookingForm = ({ onBookingCreated }) => {
       }
     }
     
-    // If date is a checkout day, it's always available for booking
-    if (isCheckoutDay(date)) {
-      // Allow booking on checkout days
-      if (formData.rentalType === 'pool') {
-        const nextDay = new Date(date);
-        nextDay.setDate(nextDay.getDate() + 1);
-        
-        setFormData({
-          ...formData,
-          startDate: date,
-          endDate: nextDay,
-          duration: 1 // Always 1 day for pool bookings
-        });
-        
-        // Update amount
-        calculateAmount('pool', 1);
-      } else {
-        let newEndDate = formData.endDate;
-        
-        // If selected date is after current end date, adjust end date to be one day later
-        if (date >= formData.endDate) {
-          const nextDay = new Date(date);
-          nextDay.setDate(date.getDate() + 1);
-          newEndDate = nextDay;
-        }
-        
-        // Calculate new duration
-        const timeDiff = newEndDate.getTime() - date.getTime();
-        const newDuration = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        
-        setFormData({
-          ...formData,
-          startDate: date,
-          endDate: newEndDate,
-          duration: newDuration
-        });
-        
-        // Update amount
-        calculateAmount('villa_pool', newDuration);
-      }
-      return;
-    }
-    
-    // Check if date is unavailable for ANY rental type, not just the selected one
+    // Only check if date is unavailable (start date or middle dates, but not end dates)
     if (isDateUnavailable(date)) {
       toast.error(`This date is not available for booking`);
       return;
