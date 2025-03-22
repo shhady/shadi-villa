@@ -101,7 +101,7 @@ const BookingForm = ({ onBookingCreated }) => {
   // Fetch all bookings to get their status
   const fetchAllBookings = async (token) => {
     try {
-      const response = await api.get('/api/bookings', {
+      const response = await api.get('/api/bookings?for_calendar=true', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -109,7 +109,7 @@ const BookingForm = ({ onBookingCreated }) => {
       
       if (response.data.success) {
         setBookings(response.data.data);
-        console.log(`Loaded ${response.data.data.length} bookings`);
+        console.log(`Loaded ${response.data.data.length} bookings for calendar rendering`);
         
         // Now update status-specific date arrays
         const pendingBookingDates = [];
@@ -291,14 +291,11 @@ const BookingForm = ({ onBookingCreated }) => {
         return;
       }
       
-      // Check if the selected end date is the start date of another booking
-      if (isDateUnavailable(selectedDate)) {
-        toast.error(`This date is not available as it's the start date of another booking`);
-        return;
-      }
+      // Don't check if the end date is a start date of another booking
+      // This allows selecting an end date even if it's a start date for another booking
       
       // For villa bookings, check if any of the days in between are unavailable
-      // But don't check the end date itself (which is allowed to be available)
+      // But don't check the end date itself (which is allowed to be available or a start date)
       const daysToCheck = [];
       const tempDate = new Date(formData.startDate);
       
@@ -376,6 +373,7 @@ const BookingForm = ({ onBookingCreated }) => {
   };
 
   // Check if a date is unavailable for the selected rental type
+  // Note: End dates CAN be the start dates of other bookings (back-to-back bookings)
   const isDateUnavailable = (date) => {
     // Normalize the date to start of day in UTC for consistent comparison
     const dateToCheck = new Date(date);
@@ -395,6 +393,7 @@ const BookingForm = ({ onBookingCreated }) => {
     // A date is unavailable if:
     // 1. It is the start date of any booking, OR
     // 2. It falls between start and end date of any booking (exclusive of end date)
+    // But remember: When used for END dates, we allow the date even if it's a start date of another booking
     return bookings.some(booking => {
       // Skip rejected bookings
       if (booking.status === 'rejected') return false;
@@ -595,7 +594,7 @@ const BookingForm = ({ onBookingCreated }) => {
         }
         
         // Don't include the end date in the check - end dates can be booked
-        // unless they are the start date of another booking
+        // even if they are the start date of another booking
         const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
         if (unavailableDay) {
           toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
@@ -603,12 +602,8 @@ const BookingForm = ({ onBookingCreated }) => {
           return;
         }
         
-        // Check if the end date is a start date of another booking
-        if (isDateUnavailable(formData.endDate)) {
-          toast.error(`The selected end date is not available as it's the start date of another booking.`);
-          setLoading(false);
-          return;
-        }
+        // We don't check if end date is a start date of another booking
+        // This allows for back-to-back bookings where checkout and check-in can happen on the same day
       }
       
       const token = getToken();

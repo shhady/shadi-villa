@@ -48,9 +48,18 @@ export async function GET(request) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const forCalendar = searchParams.get('for_calendar');
     
     if (status) {
       query.status = status;
+    }
+    
+    // For calendar rendering, return all bookings regardless of user role
+    // This ensures agents see the same calendar availability as admins
+    if (forCalendar === 'true') {
+      // Just keep status filter if provided, but don't restrict by agent
+      console.log('Fetching all bookings for calendar rendering');
+      delete query.agentId;
     }
     
     // Get bookings based on query
@@ -266,20 +275,8 @@ export async function POST(request) {
     }
     
     // Now, check if our end date is another booking's start date (not allowed)
-    const endDateConflict = await Booking.findOne({
-      status: { $in: ['approved', 'pending'] },
-      startDate: {
-        $gte: new Date(new Date(bookingEndDate).setUTCHours(0, 0, 0, 0)),
-        $lt: new Date(new Date(bookingEndDate).setUTCHours(23, 59, 59, 999))
-      }
-    });
-    
-    if (endDateConflict) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Selected end date (${new Date(bookingEndDate).toISOString().split('T')[0]}) is not available as it's the start date of another booking.`
-      }, { status: 409 });
-    }
+    // REMOVED: This check was preventing back-to-back bookings where checkout and check-in can happen on the same day
+    // We now allow end dates to overlap with start dates of other bookings
     
     // Special case: Allow booking pool on end date of villa_pool booking
     // This check is no longer needed since end dates are always available unless they are
