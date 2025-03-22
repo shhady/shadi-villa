@@ -205,7 +205,7 @@ export async function POST(request) {
     if (conflictingStartDate) {
       return NextResponse.json({ 
         success: false, 
-        message: `The selected start date (${new Date(bookingStartDate).toISOString().split('T')[0]}) is already booked as another booking's start date.`
+        message: `Selected start date (${new Date(bookingStartDate).toISOString().split('T')[0]}) is not available for booking.`
       }, { status: 409 });
     }
     
@@ -249,7 +249,7 @@ export async function POST(request) {
         console.log(`Found ${conflictingBookings.length} conflicting bookings`);
         return NextResponse.json({ 
           success: false, 
-          message: `The selected dates overlap with existing bookings. There are ${conflictingBookings.length} booking(s) that conflict with your requested dates.`
+          message: `Selected dates are not available. There are ${conflictingBookings.length} booking(s) that conflict with your requested dates.`
         }, { status: 409 });
       }
     }

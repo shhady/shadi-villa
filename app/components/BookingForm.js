@@ -222,8 +222,8 @@ const BookingForm = ({ onBookingCreated }) => {
     
     if (name === 'startDate') {
       // First check if date is unavailable for the selected rental type
-      if (isDateUnavailable(selectedDate, formData.rentalType)) {
-        toast.error(`This date is not available for ${formData.rentalType === 'pool' ? 'pool' : 'villa'} booking`);
+      if (isDateUnavailable(selectedDate)) {
+        toast.error(`This date is not available for booking`);
         return;
       }
       
@@ -301,7 +301,7 @@ const BookingForm = ({ onBookingCreated }) => {
       }
       
       // Check if any day in the range is unavailable
-      const unavailableDay = daysToCheck.find(day => isDateUnavailable(day, 'villa_pool'));
+      const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
       if (unavailableDay) {
         toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
         return;
@@ -323,17 +323,53 @@ const BookingForm = ({ onBookingCreated }) => {
   };
 
   // Check if a date is a villa start date
+  // This is used to prevent pool bookings on villa start dates
   const isVillaStartDate = (date) => {
+    // Normalize the date to UTC midnight for consistent comparison
     const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
+    const normalizedDate = new Date(Date.UTC(
+      dateToCheck.getFullYear(),
+      dateToCheck.getMonth(),
+      dateToCheck.getDate(),
+      0, 0, 0, 0
+    ));
     
-    return unavailableDates.villaStartDates.some(villaStartDate => 
-      villaStartDate.getTime() === dateToCheck.getTime()
-    );
+    // First check bookings for any villa_pool start dates
+    const isStartDateOfVillaBooking = bookings.some(booking => {
+      // Skip rejected bookings
+      if (booking.status === 'rejected') return false;
+      
+      // Only consider villa_pool bookings
+      if (booking.rentalType !== 'villa_pool') return false;
+      
+      const startDate = new Date(booking.startDate);
+      const normalizedStartDate = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      return normalizedStartDate.getTime() === normalizedDate.getTime();
+    });
+    
+    if (isStartDateOfVillaBooking) return true;
+    
+    // Also check the unavailableDates.villaStartDates from the API
+    return unavailableDates.villaStartDates.some(villaStartDate => {
+      const startDateObj = new Date(villaStartDate);
+      const normalizedVillaStartDate = new Date(Date.UTC(
+        startDateObj.getFullYear(),
+        startDateObj.getMonth(),
+        startDateObj.getDate(),
+        0, 0, 0, 0
+      ));
+      return normalizedVillaStartDate.getTime() === normalizedDate.getTime();
+    });
   };
 
   // Check if a date is unavailable for the selected rental type
-  const isDateUnavailable = (date, rentalType) => {
+  const isDateUnavailable = (date) => {
     // Normalize the date to start of day in UTC for consistent comparison
     const dateToCheck = new Date(date);
     // Use UTC methods to avoid timezone shifts
@@ -356,7 +392,8 @@ const BookingForm = ({ onBookingCreated }) => {
     }
     
     // Now check if the date falls within any booking's range (excluding end dates)
-    // This applies to both pool and villa bookings with the same logic
+    // This applies to both pool and villa bookings with the same logic - if a date is
+    // unavailable for one type, it's unavailable for all types
     return bookings.some(booking => {
       // Skip rejected bookings
       if (booking.status === 'rejected') return false;
@@ -521,24 +558,40 @@ const BookingForm = ({ onBookingCreated }) => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     
     try {
+      setLoading(true);
+      
       // Validate rental type specific rules
       if (formData.rentalType === 'pool') {
-        // Pool bookings must be for a single day
-        const startDay = new Date(formData.startDate).setHours(0, 0, 0, 0);
-        const endDay = new Date(formData.endDate).setHours(0, 0, 0, 0);
-        
-        // if (startDay !== endDay) {
-        //   toast.error('Pool bookings must be for a single day only');
-        //   setLoading(false);
-        //   return;
-        // }
+        // Check if the start date is unavailable
+        if (isDateUnavailable(formData.startDate)) {
+          toast.error('This date is not available for booking');
+          setLoading(false);
+          return;
+        }
         
         // Check if this is a villa start date
         if (isVillaStartDate(formData.startDate)) {
           toast.error('Pool bookings are not allowed on start dates of villa bookings');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // For villa bookings, check all dates between start and end (exclusive of end)
+        const daysToCheck = [];
+        const tempDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        
+        while (tempDate < endDate) {
+          daysToCheck.push(new Date(tempDate));
+          tempDate.setDate(tempDate.getDate() + 1);
+        }
+        
+        // Check if any day in the range is unavailable
+        const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
+        if (unavailableDay) {
+          toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
           setLoading(false);
           return;
         }
@@ -791,7 +844,7 @@ const BookingForm = ({ onBookingCreated }) => {
     }
     
     // If date is unavailable for other reasons
-    if (isDateUnavailable(date, formData.rentalType)) {
+    if (isDateUnavailable(date)) {
       return `bg-blue-100 ${adminClickableClass}`; // Same as approved
     }
     
@@ -981,13 +1034,13 @@ const BookingForm = ({ onBookingCreated }) => {
       return;
     }
     
-    // Check if date is unavailable for the selected rental type
-    if (isDateUnavailable(date, formData.rentalType)) {
-      toast.error(`This date is not available for ${formData.rentalType === 'pool' ? 'pool' : 'villa'} booking`);
+    // Check if date is unavailable for ANY rental type, not just the selected one
+    if (isDateUnavailable(date)) {
+      toast.error(`This date is not available for booking`);
       return;
     }
     
-    // For pool bookings, check if this is a villa start date
+    // Check for villa start dates for pool bookings only
     if (formData.rentalType === 'pool' && isVillaStartDate(date)) {
       toast.error('Pool bookings are not allowed on start dates of villa bookings');
       return;
