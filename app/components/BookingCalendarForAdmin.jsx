@@ -1241,7 +1241,7 @@ const BookingForm = ({ onBookingCreated }) => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700">Amount (₪)</label>
+            <label className="block text-sm font-medium text-gray-700">Price (₪)</label>
             <input
               type="number"
               name="amount"
@@ -1250,11 +1250,9 @@ const BookingForm = ({ onBookingCreated }) => {
               onChange={handleChange}
               required
               className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Enter the booking amount"
+              placeholder="price"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              Please enter the booking amount manually based on your pricing guidelines.
-            </p>
+          
           </div>
         </div>
         
@@ -1266,7 +1264,6 @@ const BookingForm = ({ onBookingCreated }) => {
             onChange={handleChange}
             className="px-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             rows="3"
-            placeholder="Add any additional information or special requirements here"
           ></textarea>
         </div>
         
