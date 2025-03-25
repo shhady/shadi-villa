@@ -1118,7 +1118,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.rentalType}
             onChange={handleChange}
             required
-            className="px-4 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="villa_pool">Villa + Pool</option>
             <option value="pool">Pool Only</option>
