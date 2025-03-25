@@ -29,13 +29,13 @@ const BookingForm = ({ onBookingCreated }) => {
   const [formData, setFormData] = useState({
     guestName: '',
     phoneNumber: '', // Added phone number field
-    adults: 1, // Changed from guestCount to adults
-    children: 0, // Added children field
+    adults: '', // Empty string for adults
+    children: '', // Empty string for children
     rentalType: 'villa_pool', // Changed default from 'pool' to 'villa_pool'
     startDate: new Date(),
     endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
     duration: 2, // Changed from 1 to 2 for villa_pool default
-    amount: '', // Changed from 100 to 500 (250 * 2 days for villa_pool)
+    amount: '', // Amount field as empty string
     details: '' // Added details field for notes
   });
 
@@ -614,11 +614,13 @@ const BookingForm = ({ onBookingCreated }) => {
         return utcDate;
       };
       
-      // Create a copy of the form data with normalized dates to prevent time-related issues
-      // Calculate total guest count from adults + children
-      const normalizedFormData = {
+      // Create data for API submission
+      const bookingData = {
         ...formData,
-        guestCount: formData.adults + formData.children, // Calculate total guest count
+        adults: formData.adults === '' ? 0 : parseInt(formData.adults, 10),
+        children: formData.children === '' ? 0 : parseInt(formData.children, 10),
+        guestCount: (formData.adults === '' ? 0 : parseInt(formData.adults, 10)) + 
+                    (formData.children === '' ? 0 : parseInt(formData.children, 10)),
         startDate: toUtcDate(new Date(formData.startDate)),
         endDate: formData.rentalType === 'pool' 
           ? toUtcDate(new Date(formData.startDate)) // For pool bookings, use same date for both
@@ -626,9 +628,9 @@ const BookingForm = ({ onBookingCreated }) => {
       };
       
       console.log('Submitting booking with token:', token.substring(0, 10) + '...');
-      console.log('Booking data:', normalizedFormData);
+      console.log('Booking data:', bookingData);
       
-      const response = await api.post('/api/bookings', normalizedFormData, {
+      const response = await api.post('/api/bookings', bookingData, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -641,8 +643,8 @@ const BookingForm = ({ onBookingCreated }) => {
         setFormData({
           guestName: '',
           phoneNumber: '',
-          adults: 1,
-          children: 0,
+          adults: '',
+          children: '',
           rentalType: 'villa_pool',
           startDate: new Date(),
           endDate: new Date(new Date().setDate(new Date().getDate() + 1)),
@@ -767,14 +769,21 @@ const BookingForm = ({ onBookingCreated }) => {
     
     // Current and selected date styling
     const currentDateString = normalizedDate.toISOString().split('T')[0];
-    const startDateString = new Date(formData.startDate).toISOString().split('T')[0];
-    const endDateString = new Date(formData.endDate).toISOString().split('T')[0];
     
-    // Only highlight the specific selected start date with a border
-    // No special color treatment for any other dates related to the selection
-    // if (currentDateString === startDateString) {
-    //   return `border-2 border-blue-600 ${adminClickableClass}`; // Just a border for selected start date
-    // }
+    // Normalize the formData.startDate in the same way as the current date
+    const startDate = new Date(formData.startDate);
+    const normalizedStartDate = new Date(Date.UTC(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(), 
+      0, 0, 0, 0
+    ));
+    const startDateString = normalizedStartDate.toISOString().split('T')[0];
+    
+    // Add border around the selected start date
+    if (currentDateString === startDateString) {
+      return `border-2 border-blue-600 ${adminClickableClass}`; // Added border for selected start date
+    }
     
     // Past dates are light gray and not clickable
     const today = new Date();
