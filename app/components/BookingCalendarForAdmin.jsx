@@ -35,7 +35,7 @@ const BookingForm = ({ onBookingCreated }) => {
     startDate: new Date(),
     endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
     duration: 2, // Changed from 1 to 2 for villa_pool default
-    amount: 500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
+    amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
     details: '' // Added details field for notes
   });
 
@@ -551,7 +551,7 @@ const BookingForm = ({ onBookingCreated }) => {
     // Example pricing:
     // Pool: $100 per day
     // Villa + Pool: $250 per day
-    const baseRate = type === 'pool' ? 100 : 250;
+    const baseRate = type === 'pool' ? 800 : 2500;
     const amount = baseRate * days;
     
     setFormData(prev => ({
@@ -660,7 +660,7 @@ const BookingForm = ({ onBookingCreated }) => {
           startDate: new Date(),
           endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
           duration: 2, // Changed from 1 to 2 for villa_pool default
-          amount: 500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
+          amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
           details: '' // Added details field for notes
         });
         
@@ -1125,22 +1125,7 @@ const BookingForm = ({ onBookingCreated }) => {
             {/* <div className="flex items-center"><div className="w-5 h-5 bg-green-300 border-2 border-dashed border-blue-300 rounded-sm mr-1"></div> <span>Checkout/Check-in Day</span></div> */}
           </div>
           
-          {/* Information about checkout/check-in days */}
-          {/* <div className="mt-3 text-sm text-gray-600 p-2 bg-blue-50 rounded"> */}
-            {/* <p>
-              <span className="font-semibold">Note:</span> Checkout/Check-in days (highlighted with dashed borders) are dates when pending or approved Villa+Pool bookings end and new ones can begin. 
-              Villa checkout is at 12 PM, allowing new guests to check in on the same day.
-              Dates won&apos;t be marked as checkout/check-in days if they&apos;re already the start date of another booking or have a Pool booking.
-              Rejected bookings are treated as fully available dates with no special indicators.
-            </p>
-             */}
-            {/* Admin-only instructions */}
-            {/* {hasRole('admin') && (
-              <p className="mt-2 text-blue-800 font-medium">
-                Admin: Click on any pending or approved booking date in the calendar to view its full details.
-              </p>
-            )} */}
-          {/* </div> */}
+      
         </div>
       </div>
      {showForm && 
@@ -1152,7 +1137,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.rentalType}
             onChange={handleChange}
             required
-            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="px-4 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="villa_pool">Villa + Pool</option>
             <option value="pool">Pool Only</option>
@@ -1168,7 +1153,7 @@ const BookingForm = ({ onBookingCreated }) => {
               onChange={handleDateInputChange}
               required
               min={formatDateForInput(new Date())}
-              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           
@@ -1182,7 +1167,7 @@ const BookingForm = ({ onBookingCreated }) => {
               required
               min={formatDateForInput(formData.rentalType === 'pool' ? formData.startDate : new Date(new Date(formData.startDate).setDate(new Date(formData.startDate).getDate() + 1)))}
               disabled={formData.rentalType === 'pool'}
-              className={`h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
+              className={`px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formData.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
             />
             {formData.rentalType === 'pool' && (
               <p className="text-sm text-gray-500 mt-1">Pool bookings are for a single day only. Checkout is automatically set to the day after check-in.</p>
@@ -1197,7 +1182,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.guestName}
             onChange={handleChange}
             required
-            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         
@@ -1209,7 +1194,7 @@ const BookingForm = ({ onBookingCreated }) => {
             value={formData.phoneNumber}
             onChange={handleChange}
             required
-            className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g. +1 234 567 8900"
           />
         </div>
@@ -1224,7 +1209,7 @@ const BookingForm = ({ onBookingCreated }) => {
               value={formData.adults}
               onChange={handleChange}
               required
-              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           
@@ -1236,7 +1221,7 @@ const BookingForm = ({ onBookingCreated }) => {
               min="0"
               value={formData.children}
               onChange={handleChange}
-              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -1274,7 +1259,7 @@ const BookingForm = ({ onBookingCreated }) => {
               value={formData.amount}
               onChange={handleChange}
               required
-              className="h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -1285,7 +1270,7 @@ const BookingForm = ({ onBookingCreated }) => {
             name="details"
             value={formData.details}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="px-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             rows="3"
             placeholder="Add any additional information or special requirements here"
           ></textarea>
