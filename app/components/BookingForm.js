@@ -35,7 +35,7 @@ const BookingForm = ({ onBookingCreated }) => {
     startDate: new Date(),
     endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
     duration: 2, // Changed from 1 to 2 for villa_pool default
-    amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
+    amount: '', // Use string '0' instead of empty string to ensure it's always a controlled input
     details: '' // Added details field for notes
   });
 
@@ -177,8 +177,6 @@ const BookingForm = ({ onBookingCreated }) => {
           duration: 1  // Always 1 day for pool bookings
         });
         
-        // Update amount based on pool rate for 1 day only
-        calculateAmount(value, 1);
         return;
       }
       // If changing to villa_pool, set end date to next day if currently same as start date
@@ -196,63 +194,74 @@ const BookingForm = ({ onBookingCreated }) => {
             endDate: nextDay,
             duration: 2
           });
-          
-          // Update amount based on type and duration
-          calculateAmount(value, 2);
-          return;
+        } else {
+          setFormData({
+            ...formData,
+            rentalType: value
+          });
         }
+        
+        return;
       }
     }
     
+    // Regular field update
     setFormData({
       ...formData,
       [name]: value
     });
-
-    // If rental type changes, recalculate amount
-    if (name === 'rentalType' || name === 'duration') {
-      calculateAmount(name === 'rentalType' ? value : formData.rentalType, name === 'duration' ? parseInt(value) : formData.duration);
-    }
   };
 
   // Handle date input changes
   const handleDateInputChange = (e) => {
     const { name, value } = e.target;
-    const selectedDate = new Date(value);
     
+    // Skip processing if empty
+    if (!value) {
+      setFormData({ ...formData, [name]: "" });
+      return;
+    }
+    
+    // Parse the date input value to a Date object
+    const selectedDate = new Date(value);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    // Format for debugging
+    const formattedDate = selectedDate.toLocaleDateString();
+    
+    // Handle start date changes
     if (name === 'startDate') {
-      // First check if date is unavailable
+      // Check if the date is unavailable for any rental type
       if (isDateUnavailable(selectedDate)) {
-        toast.error(`This date is not available for booking`);
+        toast.error("This date is not available for booking.");
         return;
       }
       
-      // For pool bookings, check if this is a villa start date
-      if (formData.rentalType === 'pool' && isVillaStartDate(selectedDate)) {
-        toast.error('Pool bookings are not allowed on start dates of villa bookings');
+      // Check if the selected date is a villa start date (common check for both rental types)
+      if (isVillaStartDate(selectedDate)) {
+        toast.error("This date is not available as it's the start date of another booking");
         return;
       }
       
-      // For pool rentals, set end date to one day after start date
+      // For pool bookings, set end date automatically (one day after start date)
       if (formData.rentalType === 'pool') {
+        // Create a new date object for the next day
         const nextDay = new Date(selectedDate);
-        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setDate(selectedDate.getDate() + 1);
         
+        // Update form state with the new start/end dates and fixed duration
         setFormData({
           ...formData,
           startDate: selectedDate,
           endDate: nextDay,
           duration: 1  // Always 1 day for pool bookings
         });
-        
-        // Update amount based on pool rate for 1 day
-        calculateAmount('pool', 1);
       } else {
         // For villa rentals
         let newEndDate = formData.endDate;
         
-        // If start date is after current end date, adjust end date
-        if (selectedDate >= formData.endDate) {
+        // If end date is not set or start date is after/equal to current end date, adjust end date
+        if (!formData.endDate || selectedDate >= formData.endDate) {
           const nextDay = new Date(selectedDate);
           nextDay.setDate(selectedDate.getDate() + 1);
           newEndDate = nextDay;
@@ -262,15 +271,13 @@ const BookingForm = ({ onBookingCreated }) => {
         const timeDiff = newEndDate.getTime() - selectedDate.getTime();
         const newDuration = Math.ceil(timeDiff / (1000 * 3600 * 24));
         
+        // Update form state with the new start date, adjusted end date if needed, and calculated duration
         setFormData({
           ...formData,
           startDate: selectedDate,
           endDate: newEndDate,
           duration: newDuration
         });
-        
-        // Update amount
-        calculateAmount('villa_pool', newDuration);
       }
     } else if (name === 'endDate') {
       // For pool rental, end date is automatically set and cannot be changed manually
@@ -280,49 +287,24 @@ const BookingForm = ({ onBookingCreated }) => {
       }
       
       // If end date is before start date, show error
-      if (selectedDate < formData.startDate) {
-        toast.error('End date cannot be earlier than start date');
+      if (selectedDate <= formData.startDate) {
+        toast.error('End date must be after start date');
         return;
       }
       
-      // If end date is the same as start date, show error for villa_pool
-      if (selectedDate.toDateString() === formData.startDate.toDateString() && formData.rentalType === 'villa_pool') {
-        toast.error('Villa bookings must be for at least one night');
-        return;
-      }
+      // Check if the date is unavailable (for villa bookings)
+      // But allow end dates on unavailable dates (since end dates can be checkout days)
       
-      // Don't check if the end date is a start date of another booking
-      // This allows selecting an end date even if it's a start date for another booking
-      
-      // For villa bookings, check if any of the days in between are unavailable
-      // But don't check the end date itself (which is allowed to be available or a start date)
-      const daysToCheck = [];
-      const tempDate = new Date(formData.startDate);
-      
-      while (tempDate < selectedDate) {
-        daysToCheck.push(new Date(tempDate));
-        tempDate.setDate(tempDate.getDate() + 1);
-      }
-      
-      // Check if any day in the range is unavailable (excluding the end date)
-      const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
-      if (unavailableDay) {
-        toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
-        return;
-      }
-      
-      // Calculate duration in days
+      // Calculate duration with the new end date
       const timeDiff = selectedDate.getTime() - formData.startDate.getTime();
       const newDuration = Math.ceil(timeDiff / (1000 * 3600 * 24));
       
+      // Update form with the new end date and calculated duration
       setFormData({
         ...formData,
         endDate: selectedDate,
         duration: newDuration
       });
-      
-      // Update amount
-      calculateAmount('villa_pool', newDuration);
     }
   };
 
@@ -546,18 +528,11 @@ const BookingForm = ({ onBookingCreated }) => {
     });
   };
 
-  // Calculate rental amount based on type and duration
+  // Calculate rental amount based on type and duration - REMOVED automatic calculation
   const calculateAmount = (type, days) => {
-    // Example pricing:
-    // Pool: $100 per day
-    // Villa + Pool: $250 per day
-    const baseRate = type === 'pool' ? 800 : 2500;
-    const amount = baseRate * days;
-    
-    setFormData(prev => ({
-      ...prev,
-      amount
-    }));
+    // This function is kept for backward compatibility but now just returns the current amount
+    // instead of undefined to prevent controlled to uncontrolled input errors
+    return formData.amount || ''; // Return current amount or empty string (not undefined)
   };
 
   // Handle form submission
@@ -567,23 +542,22 @@ const BookingForm = ({ onBookingCreated }) => {
     try {
       setLoading(true);
       
-      // Validate rental type specific rules
-      if (formData.rentalType === 'pool') {
-        // Check if the start date is unavailable
-        if (isDateUnavailable(formData.startDate)) {
-          toast.error('This date is not available for booking');
-          setLoading(false);
-          return;
-        }
-        
-        // Check if this is a villa start date
-        if (isVillaStartDate(formData.startDate)) {
-          toast.error('Pool bookings are not allowed on start dates of villa bookings');
-          setLoading(false);
-          return;
-        }
-      } else {
-        // For villa bookings, check all dates between start and end (exclusive of end)
+      // Check if date is unavailable for any rental type
+      if (isDateUnavailable(formData.startDate)) {
+        toast.error("This date is not available for booking.");
+        setLoading(false);
+        return;
+      }
+      
+      // Check if the start date is a villa start date (for both rental types)
+      if (isVillaStartDate(formData.startDate)) {
+        toast.error("This date is not available as it's the start date of another booking");
+        setLoading(false);
+        return;
+      }
+      
+      // For villa bookings, check all dates between start and end (exclusive of end)
+      if (formData.rentalType === 'villa_pool') {
         const daysToCheck = [];
         const tempDate = new Date(formData.startDate);
         const endDate = new Date(formData.endDate);
@@ -593,18 +567,18 @@ const BookingForm = ({ onBookingCreated }) => {
           tempDate.setDate(tempDate.getDate() + 1);
         }
         
-        // Don't include the end date in the check - end dates can be booked
-        // even if they are the start date of another booking
+        // Check if any day in the range is unavailable (excluding the end date)
         const unavailableDay = daysToCheck.find(day => isDateUnavailable(day));
         if (unavailableDay) {
           toast.error(`The date range includes unavailable dates. ${unavailableDay.toLocaleDateString()} is already booked.`);
           setLoading(false);
           return;
         }
-        
-        // We don't check if end date is a start date of another booking
-        // This allows for back-to-back bookings where checkout and check-in can happen on the same day
       }
+      
+      // Prepare data for API submission with UTC dates
+      const formattedStartDate = formData.startDate;
+      const formattedEndDate = formData.endDate;
       
       const token = getToken();
       
@@ -660,7 +634,7 @@ const BookingForm = ({ onBookingCreated }) => {
           startDate: new Date(),
           endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
           duration: 2, // Changed from 1 to 2 for villa_pool default
-          amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
+          amount: '0', // Use string '0' instead of empty string to ensure it's always a controlled input
           details: '' // Added details field for notes
         });
         
@@ -982,9 +956,9 @@ const BookingForm = ({ onBookingCreated }) => {
     return type === 'pool' ? 'Pool Only' : 'Villa + Pool';
   };
 
-  // Modify handleDayClick to handle admin booking view
+  // Handle day click in the calendar
   const handleDayClick = (date) => {
-    // First for admin, check if there's a booking on this date and show details
+    // For admins, check if there's a booking on this date and show details
     if (hasRole('admin')) {
       const bookingOnDate = findBookingForDate(date);
       if (bookingOnDate && (bookingOnDate.status === 'pending' || bookingOnDate.status === 'approved')) {
@@ -993,15 +967,15 @@ const BookingForm = ({ onBookingCreated }) => {
       }
     }
     
-    // Only check if date is unavailable (start date or middle dates, but not end dates)
+    // Check if the date is unavailable for any rental type
     if (isDateUnavailable(date)) {
-      toast.error(`This date is not available for booking`);
+      toast.error("This date is not available for booking.");
       return;
     }
     
-    // Check for villa start dates for pool bookings only
-    if (formData.rentalType === 'pool' && isVillaStartDate(date)) {
-      toast.error('Pool bookings are not allowed on start dates of villa bookings');
+    // Check if the selected date is a villa start date (for both rental types)
+    if (isVillaStartDate(date)) {
+      toast.error("This date is not available as it's the start date of another booking");
       return;
     }
     
@@ -1016,15 +990,12 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate: nextDay,
         duration: 1  // Always 1 day for pool bookings
       });
-      
-      // Update amount based on pool rate for 1 day
-      calculateAmount('pool', 1);
     } else {
       // For villa bookings, set start date and adjust end date if needed
       let newEndDate = formData.endDate;
       
       // If selected date is after current end date, adjust end date to be one day later
-      if (date >= formData.endDate) {
+      if (!formData.endDate || date >= formData.endDate) {
         const nextDay = new Date(date);
         nextDay.setDate(date.getDate() + 1);
         newEndDate = nextDay;
@@ -1040,9 +1011,6 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate: newEndDate,
         duration: newDuration
       });
-      
-      // Update amount
-      calculateAmount('villa_pool', newDuration);
     }
   };
 
@@ -1259,7 +1227,9 @@ const BookingForm = ({ onBookingCreated }) => {
               onChange={handleChange}
               required
               className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Enter the booking amount"
             />
+          
           </div>
         </div>
         

@@ -35,7 +35,7 @@ const BookingForm = ({ onBookingCreated }) => {
     startDate: new Date(),
     endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
     duration: 2, // Changed from 1 to 2 for villa_pool default
-    amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
+    amount: '', // Changed from 100 to 500 (250 * 2 days for villa_pool)
     details: '' // Added details field for notes
   });
 
@@ -160,9 +160,9 @@ const BookingForm = ({ onBookingCreated }) => {
       if (value === 'pool') {
         const startDate = formData.startDate;
         
-        // Check if selected date is a villa start date
+        // Check if selected date is a villa start date for both rental types
         if (isVillaStartDate(startDate)) {
-          toast.error('Pool bookings are not allowed on start dates of villa bookings');
+          toast.error('This date is not available as it\'s the start date of another booking');
           return;
         }
         
@@ -177,8 +177,6 @@ const BookingForm = ({ onBookingCreated }) => {
           duration: 1  // Always 1 day for pool bookings
         });
         
-        // Update amount based on pool rate for 1 day only
-        calculateAmount(value, 1);
         return;
       }
       // If changing to villa_pool, set end date to next day if currently same as start date
@@ -196,23 +194,22 @@ const BookingForm = ({ onBookingCreated }) => {
             endDate: nextDay,
             duration: 2
           });
-          
-          // Update amount based on type and duration
-          calculateAmount(value, 2);
-          return;
+        } else {
+          setFormData({
+            ...formData,
+            rentalType: value
+          });
         }
+        
+        return;
       }
     }
     
+    // Regular field update
     setFormData({
       ...formData,
       [name]: value
     });
-
-    // If rental type changes, recalculate amount
-    if (name === 'rentalType' || name === 'duration') {
-      calculateAmount(name === 'rentalType' ? value : formData.rentalType, name === 'duration' ? parseInt(value) : formData.duration);
-    }
   };
 
   // Handle date input changes
@@ -227,9 +224,9 @@ const BookingForm = ({ onBookingCreated }) => {
         return;
       }
       
-      // For pool bookings, check if this is a villa start date
-      if (formData.rentalType === 'pool' && isVillaStartDate(selectedDate)) {
-        toast.error('Pool bookings are not allowed on start dates of villa bookings');
+      // Check for start date conflicts for both rental types
+      if (isVillaStartDate(selectedDate)) {
+        toast.error('This date is not available as it\'s the start date of another booking');
         return;
       }
       
@@ -244,9 +241,6 @@ const BookingForm = ({ onBookingCreated }) => {
           endDate: nextDay,
           duration: 1  // Always 1 day for pool bookings
         });
-        
-        // Update amount based on pool rate for 1 day
-        calculateAmount('pool', 1);
       } else {
         // For villa rentals
         let newEndDate = formData.endDate;
@@ -268,9 +262,6 @@ const BookingForm = ({ onBookingCreated }) => {
           endDate: newEndDate,
           duration: newDuration
         });
-        
-        // Update amount
-        calculateAmount('villa_pool', newDuration);
       }
     } else if (name === 'endDate') {
       // For pool rental, end date is automatically set and cannot be changed manually
@@ -320,9 +311,6 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate: selectedDate,
         duration: newDuration
       });
-      
-      // Update amount
-      calculateAmount('villa_pool', newDuration);
     }
   };
 
@@ -546,18 +534,11 @@ const BookingForm = ({ onBookingCreated }) => {
     });
   };
 
-  // Calculate rental amount based on type and duration
+  // Calculate rental amount based on type and duration - REMOVED automatic calculation
   const calculateAmount = (type, days) => {
-    // Example pricing:
-    // Pool: $100 per day
-    // Villa + Pool: $250 per day
-    const baseRate = type === 'pool' ? 800 : 2500;
-    const amount = baseRate * days;
-    
-    setFormData(prev => ({
-      ...prev,
-      amount
-    }));
+    // This function is kept for backward compatibility but no longer calculates automatically
+    // Amount will be manually entered by admin/agent
+    return;
   };
 
   // Handle form submission
@@ -567,23 +548,29 @@ const BookingForm = ({ onBookingCreated }) => {
     try {
       setLoading(true);
       
-      // Validate rental type specific rules
-      if (formData.rentalType === 'pool') {
-        // Check if the start date is unavailable
-        if (isDateUnavailable(formData.startDate)) {
-          toast.error('This date is not available for booking');
-          setLoading(false);
-          return;
-        }
-        
-        // Check if this is a villa start date
-        if (isVillaStartDate(formData.startDate)) {
-          toast.error('Pool bookings are not allowed on start dates of villa bookings');
-          setLoading(false);
-          return;
-        }
-      } else {
-        // For villa bookings, check all dates between start and end (exclusive of end)
+      // Validate that amount is provided
+      if (!formData.amount) {
+        toast.error('Please enter the booking amount before submitting');
+        setLoading(false);
+        return;
+      }
+      
+      // For all rental types, check if the start date is unavailable
+      if (isDateUnavailable(formData.startDate)) {
+        toast.error('This date is not available for booking');
+        setLoading(false);
+        return;
+      }
+      
+      // For all rental types, check if start date conflicts with another booking
+      if (isVillaStartDate(formData.startDate)) {
+        toast.error('This date is not available as it\'s the start date of another booking');
+        setLoading(false);
+        return;
+      }
+      
+      // For villa bookings, check all dates between start and end (exclusive of end)
+      if (formData.rentalType === 'villa_pool') {
         const daysToCheck = [];
         const tempDate = new Date(formData.startDate);
         const endDate = new Date(formData.endDate);
@@ -656,12 +643,12 @@ const BookingForm = ({ onBookingCreated }) => {
           phoneNumber: '',
           adults: 1,
           children: 0,
-          rentalType: 'villa_pool', // Changed from 'pool' to 'villa_pool'
+          rentalType: 'villa_pool',
           startDate: new Date(),
-          endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Set end date to next day
-          duration: 2, // Changed from 1 to 2 for villa_pool default
-          amount: 2500, // Changed from 100 to 500 (250 * 2 days for villa_pool)
-          details: '' // Added details field for notes
+          endDate: new Date(new Date().setDate(new Date().getDate() + 1)),
+          duration: 1,
+          amount: '', // Empty amount - user must enter it manually
+          details: ''
         });
         
         // Notify parent component
@@ -999,9 +986,9 @@ const BookingForm = ({ onBookingCreated }) => {
       return;
     }
     
-    // Check for villa start dates for pool bookings only
-    if (formData.rentalType === 'pool' && isVillaStartDate(date)) {
-      toast.error('Pool bookings are not allowed on start dates of villa bookings');
+    // For both pool and villa_pool, check if the date is a villa start date
+    if (isVillaStartDate(date)) {
+      toast.error('This date is not available as it\'s the start date of another booking');
       return;
     }
     
@@ -1016,9 +1003,6 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate: nextDay,
         duration: 1  // Always 1 day for pool bookings
       });
-      
-      // Update amount based on pool rate for 1 day
-      calculateAmount('pool', 1);
     } else {
       // For villa bookings, set start date and adjust end date if needed
       let newEndDate = formData.endDate;
@@ -1040,9 +1024,6 @@ const BookingForm = ({ onBookingCreated }) => {
         endDate: newEndDate,
         duration: newDuration
       });
-      
-      // Update amount
-      calculateAmount('villa_pool', newDuration);
     }
   };
 
@@ -1260,7 +1241,11 @@ const BookingForm = ({ onBookingCreated }) => {
               onChange={handleChange}
               required
               className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Enter the booking amount"
             />
+            <p className="text-sm text-gray-500 mt-1">
+              Please enter the booking amount manually based on your pricing guidelines.
+            </p>
           </div>
         </div>
         
