@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/utils/dbConnect';
 import Booking from '../../../../../lib/models/Booking';
+import User from '../../../../../lib/models/User';
 import { authenticateUser, getTokenFromHeaders } from '../../../../../lib/utils/auth';
+import { sendBookingStatusUpdateEmail } from '../../../../../lib/utils/mailer';
 export const dynamic = 'force-dynamic';
 
 // Helper function to log headers and extract token
@@ -118,6 +120,23 @@ export async function PATCH(request, { params }) {
     await booking.save();
     
     console.log(`PATCH /api/bookings/${id}/status - Status updated from ${previousStatus} to ${status}`);
+    
+    // Send status update email to the booking's agent
+    try {
+      // Get the agent who created the booking
+      const agent = await User.findById(booking.agentId).select('name email');
+      
+      if (agent && agent.email) {
+        // Send status update email
+        await sendBookingStatusUpdateEmail(booking, agent, previousStatus);
+        console.log('Status update email sent to agent:', agent.email);
+      } else {
+        console.log('Could not find agent information for sending email');
+      }
+    } catch (emailError) {
+      console.error('Error sending status update email:', emailError);
+      // Continue with the status update process even if email fails
+    }
     
     let responseMessage = `Booking status updated to ${status}`;
     

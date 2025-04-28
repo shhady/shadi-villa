@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '../../../lib/utils/dbConnect';
 import Booking from '../../../lib/models/Booking';
+import User from '../../../lib/models/User';
 import { authenticateUser, getTokenFromHeaders } from '../../../lib/utils/auth';
+import { sendBookingConfirmationEmail } from '../../../lib/utils/mailer';
 export const dynamic = 'force-dynamic';
 
 // Debug helper to log headers
@@ -316,6 +318,20 @@ export async function POST(request) {
       duration: booking.duration,
       status: booking.status
     });
+    
+    // Get the agent information to send email
+    try {
+      const agent = await User.findById(user.userId).select('name email');
+      
+      if (agent && agent.email) {
+        // Send booking confirmation email to the agent
+        await sendBookingConfirmationEmail(booking, agent);
+        console.log('Booking confirmation email sent to agent:', agent.email);
+      }
+    } catch (emailError) {
+      console.error('Error sending booking confirmation email:', emailError);
+      // Continue with the booking process even if email fails
+    }
     
     return NextResponse.json({
       success: true,

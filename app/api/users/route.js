@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '../../../lib/utils/dbConnect';
 import User from '../../../lib/models/User';
 import { authenticateUser } from '../../../lib/utils/auth';
+import { sendWelcomeEmail } from '../../../lib/utils/mailer';
 
 // Get all users (admin only)
 export async function GET(request) {
@@ -95,6 +96,15 @@ export async function POST(request) {
       password,
       role: role || 'agent'
     });
+    
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(newUser);
+      console.log('Welcome email sent to:', email);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Continue with the registration process even if email fails
+    }
     
     // Return user info (excluding password)
     return NextResponse.json({
