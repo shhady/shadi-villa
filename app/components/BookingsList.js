@@ -502,8 +502,8 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
       {/* Rejection reason modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full">
-            <div className="p-6">
+          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 overflow-y-auto">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Reason for Rejection</h3>
               
               {/* Add context for admin changing an approved booking to rejected */}
@@ -520,27 +520,27 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="Please provide a reason for rejecting this booking..."
               />
-              <div className="mt-5 sm:mt-6 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setRejectionReason('');
-                    setSelectedBooking(null);
-                  }}
-                  className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRejectSubmit}
-                  disabled={actionLoading[selectedBooking]}
-                  className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  {actionLoading[selectedBooking] ? 'Submitting...' : 'Reject Booking'}
-                </button>
-              </div>
+            </div>
+            <div className="p-4 border-t mt-auto flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowModal(false);
+                  setRejectionReason('');
+                  setSelectedBooking(null);
+                }}
+                className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectSubmit}
+                disabled={actionLoading[selectedBooking]}
+                className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              >
+                {actionLoading[selectedBooking] ? 'Submitting...' : 'Reject Booking'}
+              </button>
             </div>
           </div>
         </div>
@@ -548,8 +548,8 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
 
       {/* Edit Booking Modal */}
       {showEditModal && editingBooking && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-4xl w-full">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-0 sm:p-4 z-50 overflow-hidden">
+          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-4xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh]">
             <BookingEditForm
               booking={editingBooking}
               onClose={() => {
@@ -564,9 +564,9 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
 
       {/* Booking Details Modal */}
       {showDetailsModal && detailsBooking && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-2xl w-full">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-0 sm:p-4 z-50 overflow-hidden">
+          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-2xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] flex flex-col">
+            <div className="p-4 sm:p-6 overflow-y-auto">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="text-lg font-medium text-gray-900">Booking Details</h3>
                 <button
@@ -579,13 +579,10 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 </button>
               </div>
               
-              <div className="mt-4 grid grid-cols-1  gap-4">
-              
-                
-                
-              <div className='flex justify-start items-center gap-4'>
-                  <h4 className=" font-medium text-gray-500">Status</h4>
-                  <p className={` inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
+              <div className="mt-4 grid grid-cols-1 gap-3 pb-20 sm:pb-0">
+                <div className='flex justify-start items-center gap-4'>
+                  <h4 className="font-medium text-gray-500">Status</h4>
+                  <p className={`inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${getStatusColor(detailsBooking.status)}`}>
                     {detailsBooking.status.charAt(0).toUpperCase() + detailsBooking.status.slice(1)}
                   </p>
                 </div>
@@ -593,65 +590,50 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                   <h4 className=" font-medium text-gray-500">Rental Type:</h4>
                   <p className="font-bold">{getRentalTypeDisplay(detailsBooking.rentalType)}</p>
                 </div>
-            
-               
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className=" font-medium text-gray-500">Check-in: </h4>
                   <p className="font-bold">{formatDate(detailsBooking.startDate)}</p>
                 </div>
-                
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className=" font-medium text-gray-500">Check-out:</h4>
                   <p className="font-bold">{formatDate(detailsBooking.endDate)}</p>
                 </div>
-                     
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Duration:</h4>
                   <p className="font-bold">{detailsBooking.rentalType === 'pool' ? '1 day (pool only)' : `${detailsBooking.duration} ${detailsBooking.duration === 1 ? 'night' : 'nights'}`}</p>
                 </div>
-                
-
                 <div className='flex justify-start items-center gap-2 border-t-1 border-gray-200 pt-4'>
                   <h4 className="text-sm font-medium text-gray-500">Guest Name:</h4>
                   <p className="font-bold">{detailsBooking.guestName}</p>
                 </div>
-                
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Phone:</h4>
                   <p className="font-bold">{detailsBooking.phoneNumber || "Not provided"}</p>
                 </div>
-                
-               
-                
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Guests:</h4>
                   <p className="font-bold"> {detailsBooking.adults || 0} adults, {detailsBooking.children || 0} children</p>
                 </div>
-                
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Amount:</h4>
                   <p className="font-bold">₪ {detailsBooking.amount}</p>
                 </div>
-                
                 {hasRole('admin') && detailsBooking.agentId && (
                   <div className='flex justify-start items-center gap-2 border-t-1 border-gray-200 pt-6'>
                     <h4 className="text-sm font-medium text-gray-500">Created By:</h4>
                     <p className="">{agentNames[detailsBooking.agentId] || "Unknown Agent"}</p>
                   </div>
                 )}
-                
                 <div className='flex justify-start items-center gap-2'>
                   <h4 className="text-sm font-medium text-gray-500">Created At:</h4>
                   <p className="">{new Date(detailsBooking.createdAt).toLocaleString()}</p>
                 </div>
-                
                 {detailsBooking.status === 'rejected' && detailsBooking.rejectionReason && (
                   <div className="col-span-2">
                     <h4 className="text-sm font-medium text-gray-500">Rejection Reason</h4>
                     <p className="mt-1 text-red-600">{detailsBooking.rejectionReason}</p>
                   </div>
                 )}
-                
                 {detailsBooking.details && (
                   <div className="col-span-2">
                     <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
@@ -660,10 +642,10 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 )}
               </div>
               
-              <div className="mt-6 flex justify-end">
+              <div className="mt-6 flex justify-end sticky bottom-0 bg-white py-2 border-t">
                 {/* Admin action buttons in details modal */}
                 {hasRole('admin') && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mr-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mr-auto">
                     {/* Edit button in details modal */}
                     <button
                       onClick={() => {

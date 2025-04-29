@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
 const BookingEditForm = ({ booking, onClose, onSuccess }) => {
   const { getToken, api } = useAuth();
   const [loading, setLoading] = useState(false);
+  const formRef = useRef(null);
   
   // Initialize form data with booking data
   const [formData, setFormData] = useState({
@@ -77,6 +78,13 @@ const BookingEditForm = ({ booking, onClose, onSuccess }) => {
     }
   };
 
+  // Handle button click to submit form
+  const handleButtonClick = () => {
+    if (formRef.current) {
+      formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -137,8 +145,8 @@ const BookingEditForm = ({ booking, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white rounded-lg max-w-2xl mx-auto max-h-[90vh] flex flex-col">
+      <div className="flex justify-between items-center p-4 border-b">
         <h2 className="text-lg font-medium">Edit Booking</h2>
         <button
           onClick={onClose}
@@ -150,71 +158,14 @@ const BookingEditForm = ({ booking, onClose, onSuccess }) => {
         </button>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Guest Name</label>
-          <input
-            type="text"
-            name="guestName"
-            value={formData.guestName}
-            onChange={handleChange}
-            required
-            className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-          <input
-            type="tel"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            required
-            className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="overflow-y-auto p-4 pb-24 sm:pb-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Check-in Date</label>
+            <label className="block text-sm font-medium text-gray-700">Guest Name</label>
             <input
-              type="date"
-              name="startDate"
-              value={formatDateForInput(formData.startDate)}
-              onChange={handleDateInputChange}
-              required
-              min={formatDateForInput(new Date())}
-              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Check-out Date</label>
-            <input
-              type="date"
-              name="endDate"
-              value={formatDateForInput(formData.endDate)}
-              onChange={handleDateInputChange}
-              required
-              min={formatDateForInput(new Date(new Date(formData.startDate).setDate(new Date(formData.startDate).getDate() + 1)))}
-              disabled={booking.rentalType === 'pool'}
-              className={`px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${booking.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
-            />
-            {booking.rentalType === 'pool' && (
-              <p className="text-sm text-gray-500 mt-1">Pool bookings are for a single day only.</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Number of Adults</label>
-            <input
-              type="number"
-              name="adults"
-              min="1"
-              value={formData.adults}
+              type="text"
+              name="guestName"
+              value={formData.guestName}
               onChange={handleChange}
               required
               className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -222,78 +173,139 @@ const BookingEditForm = ({ booking, onClose, onSuccess }) => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700">Number of Children</label>
+            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
             <input
-              type="number"
-              name="children"
-              min="0"
-              value={formData.children}
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
               onChange={handleChange}
+              required
               className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Duration (nights)</label>
-            <input
-              type="number"
-              name="duration"
-              min="1"
-              value={formData.duration}
-              onChange={handleChange}
-              disabled={true}
-              required
-              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Duration is automatically calculated from the selected dates.
-            </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Check-in Date</label>
+              <input
+                type="date"
+                name="startDate"
+                value={formatDateForInput(formData.startDate)}
+                onChange={handleDateInputChange}
+                required
+                min={formatDateForInput(new Date())}
+                className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Check-out Date</label>
+              <input
+                type="date"
+                name="endDate"
+                value={formatDateForInput(formData.endDate)}
+                onChange={handleDateInputChange}
+                required
+                min={formatDateForInput(new Date(new Date(formData.startDate).setDate(new Date(formData.startDate).getDate() + 1)))}
+                disabled={booking.rentalType === 'pool'}
+                className={`px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${booking.rentalType === 'pool' ? 'bg-gray-100' : ''}`}
+              />
+              {booking.rentalType === 'pool' && (
+                <p className="text-xs text-gray-500 mt-1">Pool bookings are for a single day only.</p>
+              )}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Number of Adults</label>
+              <input
+                type="number"
+                name="adults"
+                min="1"
+                value={formData.adults}
+                onChange={handleChange}
+                required
+                className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Number of Children</label>
+              <input
+                type="number"
+                name="children"
+                min="0"
+                value={formData.children}
+                onChange={handleChange}
+                className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Duration (nights)</label>
+              <input
+                type="number"
+                name="duration"
+                min="1"
+                value={formData.duration}
+                onChange={handleChange}
+                disabled={true}
+                required
+                className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Duration is automatically calculated from the selected dates.
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Price (₪)</label>
+              <input
+                type="number"
+                name="amount"
+                min="0"
+                value={formData.amount}
+                onChange={handleChange}
+                required
+                className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700">Price (₪)</label>
-            <input
-              type="number"
-              name="amount"
-              min="0"
-              value={formData.amount}
+            <label className="block text-sm font-medium text-gray-700">Additional Details/Notes</label>
+            <textarea
+              name="details"
+              value={formData.details}
               onChange={handleChange}
-              required
-              className="px-2 h-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
+              className="px-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              rows="3"
+            ></textarea>
           </div>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Additional Details/Notes</label>
-          <textarea
-            name="details"
-            value={formData.details}
-            onChange={handleChange}
-            className="px-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            rows="3"
-          ></textarea>
-        </div>
-        
-        <div className="flex justify-end space-x-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {loading ? 'Updating...' : 'Update Booking'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
+      
+      {/* Fixed position buttons for mobile accessibility */}
+      <div className="p-4 border-t flex justify-end space-x-3 mt-auto sticky bottom-0 bg-white">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleButtonClick}
+          disabled={loading}
+          className="inline-flex justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          {loading ? 'Updating...' : 'Update Booking'}
+        </button>
+      </div>
     </div>
   );
 };
