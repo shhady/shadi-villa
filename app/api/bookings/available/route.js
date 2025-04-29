@@ -23,8 +23,7 @@ export async function GET(request) {
       status: { $in: ['approved', 'pending'] }
     }).select('startDate endDate rentalType status');
     
-    console.log(`Found ${bookings.length} bookings (approved or pending)`);
-    
+
     // Group bookings by rental type
     // For pool, only pool bookings make the pool unavailable
     const poolBookings = bookings.filter(booking => 
@@ -36,7 +35,6 @@ export async function GET(request) {
       booking.rentalType === 'villa_pool'
     );
     
-    console.log(`Pool bookings: ${poolBookings.length}, Villa bookings: ${villaBookings.length}`);
     
     // Extract start dates from villa bookings (to prevent pool bookings on these dates)
     const villaStartDates = villaBookings.map(booking => {
@@ -64,10 +62,7 @@ export async function GET(request) {
     // For villa bookings, we don't include end dates (new bookings can start on end dates)
     const villaUnavailableDates = getUnavailableDatesFromBookings(villaBookings, false);
     
-    console.log(`Unavailable pool dates: ${poolUnavailableDates.length}`);
-    console.log(`Unavailable villa dates: ${villaUnavailableDates.length}`);
-    console.log(`Villa start dates: ${villaStartDates.length}`);
-    console.log(`Villa end dates: ${villaEndDates.length}`);
+    
     
     return NextResponse.json({
       success: true,

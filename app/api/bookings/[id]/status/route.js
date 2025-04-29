@@ -11,7 +11,6 @@ const logRequestDetails = (request, method, id) => {
   console.log(`${method} /api/bookings/${id}/status - Request received`);
   try {
     const token = getTokenFromHeaders(request);
-    console.log('API Route - Token extracted:', token ? 'Yes, length: ' + token.length : 'No');
     return token;
   } catch (error) {
     console.error('Error extracting token:', error);
@@ -33,18 +32,15 @@ export async function PATCH(request, { params }) {
     const user = authenticateUser(request);
     
     if (!user) {
-      console.log(`PATCH /api/bookings/${id}/status - Authentication failed`);
       return NextResponse.json({ 
         success: false, 
         message: 'Authentication required' 
       }, { status: 401 });
     }
     
-    console.log(`PATCH /api/bookings/${id}/status - User authenticated:`, user);
     
     // Only admin can update booking status
     if (user.role !== 'admin') {
-      console.log(`PATCH /api/bookings/${id}/status - User role not admin:`, user.role);
       return NextResponse.json({ 
         success: false, 
         message: 'Only admin can update booking status' 
@@ -55,7 +51,6 @@ export async function PATCH(request, { params }) {
     const booking = await Booking.findById(id);
     
     if (!booking) {
-      console.log(`PATCH /api/bookings/${id}/status - Booking not found`);
       return NextResponse.json({ 
         success: false, 
         message: `Booking with ID ${id} not found` 
@@ -87,7 +82,6 @@ export async function PATCH(request, { params }) {
     
     // Check if the status is actually changing
     if (booking.status === status) {
-      console.log(`PATCH /api/bookings/${id}/status - Status unchanged (${status})`);
       return NextResponse.json({ 
         success: true, 
         message: `Booking status already set to ${status}`,
@@ -102,15 +96,13 @@ export async function PATCH(request, { params }) {
       endDate: booking.endDate.toISOString().split('T')[0],
       duration: booking.duration
     };
-    console.log(`PATCH /api/bookings/${id}/status - Booking details:`, bookingDetails);
-    
+
     // Update the booking
     booking.status = status;
     
     // If rejecting, set rejection reason
     if (status === 'rejected') {
       booking.rejectionReason = rejectionReason;
-      console.log(`PATCH /api/bookings/${id}/status - Rejecting booking with reason: ${rejectionReason}`);
     } else {
       // Clear rejection reason if approving or setting back to pending
       booking.rejectionReason = '';
@@ -119,7 +111,6 @@ export async function PATCH(request, { params }) {
     // Save the updated booking
     await booking.save();
     
-    console.log(`PATCH /api/bookings/${id}/status - Status updated from ${previousStatus} to ${status}`);
     
     // Send status update email to the booking's agent
     try {
@@ -129,7 +120,6 @@ export async function PATCH(request, { params }) {
       if (agent && agent.email) {
         // Send status update email
         await sendBookingStatusUpdateEmail(booking, agent, previousStatus);
-        console.log('Status update email sent to agent:', agent.email);
       } else {
         console.log('Could not find agent information for sending email');
       }
@@ -156,7 +146,6 @@ export async function PATCH(request, { params }) {
     }, { status: 200 });
     
   } catch (error) {
-    console.error(`PATCH /api/bookings/${id}/status - Error:`, error);
     return NextResponse.json({ 
       success: false, 
       message: error.message || 'Server error' 

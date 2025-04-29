@@ -49,7 +49,6 @@ const BookingForm = ({ onBookingCreated }) => {
         setLoading(true);
         const token = getToken();
         if (!token) {
-          console.log('No token available for fetching unavailable dates');
           return;
         }
 
@@ -81,7 +80,6 @@ const BookingForm = ({ onBookingCreated }) => {
             setRejectedDates(response.data.data.rejectedDates.map(date => new Date(date)));
           }
           
-          console.log(`Loaded unavailable dates - Pool: ${response.data.data.poolUnavailableDates.length}, Villa: ${response.data.data.villaUnavailableDates.length}, Villa start dates: ${response.data.data.villaStartDates.length}, Villa end dates: ${response.data.data.villaEndDates.length}`);
           
           // Also fetch all bookings to get their status
           fetchAllBookings(token);
@@ -97,7 +95,6 @@ const BookingForm = ({ onBookingCreated }) => {
     fetchUnavailableDates();
   }, [getToken, api]);
 
-  console.log(bookings)
   // Fetch all bookings to get their status
   const fetchAllBookings = async (token) => {
     try {
@@ -109,7 +106,6 @@ const BookingForm = ({ onBookingCreated }) => {
       
       if (response.data.success) {
         setBookings(response.data.data);
-        console.log(`Loaded ${response.data.data.length} bookings for calendar rendering`);
         
         // Now update status-specific date arrays
         const pendingBookingDates = [];
@@ -615,8 +611,7 @@ const BookingForm = ({ onBookingCreated }) => {
           : toUtcDate(new Date(formData.endDate))
       };
       
-      console.log('Submitting booking with token:', token.substring(0, 10) + '...');
-      console.log('Booking data:', normalizedFormData);
+      
       
       const response = await api.post('/api/bookings', normalizedFormData, {
         headers: {

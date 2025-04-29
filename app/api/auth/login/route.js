@@ -11,7 +11,6 @@ export async function POST(request) {
     const body = await request.json();
     const { email, password } = body;
     
-    console.log('Login attempt for email:', email);
     
     // Check if email and password are provided
     if (!email || !password) {
@@ -26,7 +25,6 @@ export async function POST(request) {
     
     // Check if user exists
     if (!user) {
-      console.log('User not found:', email);
       return NextResponse.json({ 
         success: false, 
         message: 'Invalid credentials' 
@@ -37,14 +35,12 @@ export async function POST(request) {
     const isMatch = await user.comparePassword(password);
     
     if (!isMatch) {
-      console.log('Password mismatch for user:', email);
       return NextResponse.json({ 
         success: false, 
         message: 'Invalid credentials' 
       }, { status: 401 });
     }
     
-    console.log('Login successful for user:', email);
     
     // Generate JWT token
     const token = generateToken(user._id, user.role);
@@ -58,7 +54,6 @@ export async function POST(request) {
       token
     };
     
-    console.log('Generated token length:', token.length);
     
     // Return user info and token
     return NextResponse.json({

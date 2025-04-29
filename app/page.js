@@ -8,7 +8,6 @@ export default function Home() {
 
   const authenticated = isAuthenticated()
   const role = userRole
-  console.log(role)
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

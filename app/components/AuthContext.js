@@ -69,10 +69,8 @@ export function AuthProvider({ children }) {
                 ...parsedUser,
                 ...response.data.data
               });
-              console.log('User session validated successfully');
             } else {
               // If token is invalid, logout
-              console.log('Invalid token response, logging out');
               logout();
             }
           } catch (error) {
@@ -99,9 +97,7 @@ export function AuthProvider({ children }) {
     setError(null);
     
     try {
-      console.log('Registering user with data:', userData);
       const response = await api.post('/api/auth/register', userData);
-      console.log('Registration response:', response.data);
       
       if (response.data.success) {
         router.push('/auth/login');
@@ -127,7 +123,6 @@ export function AuthProvider({ children }) {
       
       if (response.data.success) {
         const userData = response.data.data;
-        console.log('Login successful, token received:', userData.token ? 'Yes' : 'No');
         
         // Save user data to state and local storage
         setUser(userData);
@@ -195,6 +190,30 @@ export function AuthProvider({ children }) {
     return null;
   };
 
+  // Get current user ID
+  const getUserId = () => {
+    if (user && user._id) {
+      return user._id;
+    }
+    
+    // If not in state, try to get from localStorage as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser._id) {
+            return parsedUser._id;
+          }
+        }
+      } catch (error) {
+        console.error('Error retrieving user ID from localStorage:', error);
+      }
+    }
+    
+    return null;
+  };
+
   // Context value
   const value = {
     user,
@@ -207,7 +226,8 @@ export function AuthProvider({ children }) {
     hasRole,
     getToken,
     api,
-    userRole
+    userRole,
+    getUserId
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

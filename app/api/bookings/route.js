@@ -10,7 +10,6 @@ export const dynamic = 'force-dynamic';
 const logHeadersAndToken = (request) => {
   try {
     const token = getTokenFromHeaders(request);
-    console.log('API Route - Token extracted:', token ? 'Yes, length: ' + token.length : 'No');
     return token;
   } catch (error) {
     console.error('Error extracting token:', error);
@@ -24,21 +23,18 @@ export async function GET(request) {
     await dbConnect();
     
     // Log headers
-    console.log('GET /api/bookings - Request received');
     logHeadersAndToken(request);
     
     // Authenticate user
     const user = authenticateUser(request);
     
     if (!user) {
-      console.log('GET /api/bookings - Authentication failed');
       return NextResponse.json({ 
         success: false, 
         message: 'Authentication required' 
       }, { status: 401 });
     }
     
-    console.log('User authenticated successfully:', user);
     
     let query = {};
     
@@ -60,14 +56,12 @@ export async function GET(request) {
     // This ensures agents see the same calendar availability as admins
     if (forCalendar === 'true') {
       // Just keep status filter if provided, but don't restrict by agent
-      console.log('Fetching all bookings for calendar rendering');
       delete query.agentId;
     }
     
     // Get bookings based on query
     const bookings = await Booking.find(query).sort({ createdAt: -1 });
     
-    console.log(`Found ${bookings.length} bookings matching query`);
     
     return NextResponse.json({
       success: true,
@@ -90,7 +84,6 @@ export async function POST(request) {
     await dbConnect();
     
     // Log headers
-    console.log('POST /api/bookings - Request received');
     logHeadersAndToken(request);
     
     // Log body for debugging
@@ -109,18 +102,15 @@ export async function POST(request) {
     const user = authenticateUser(request);
     
     if (!user) {
-      console.log('POST /api/bookings - Authentication failed');
       return NextResponse.json({ 
         success: false, 
         message: 'Authentication required' 
       }, { status: 401 });
     }
     
-    console.log('Authenticated user:', user);
     
     // Only agents and admins can create bookings
     if (user.role !== 'agent' && user.role !== 'admin') {
-      console.log('User role is not authorized:', user.role);
       return NextResponse.json({ 
         success: false, 
         message: 'Only agents and admins can create bookings' 
@@ -154,7 +144,6 @@ export async function POST(request) {
     // Convert string dates to Date objects and normalize time to start of day for UTC
     // Use a more reliable approach to ensure we get the exact date the user selected
     const inputStartDate = new Date(startDate);
-    console.log('Original input start date:', inputStartDate.toISOString());
     
     // Always set hours to 0 (start of day) in UTC for consistent date handling
     const bookingStartDate = new Date(Date.UTC(
@@ -165,7 +154,6 @@ export async function POST(request) {
     ));
     
     // Log the actual date to be stored
-    console.log('UTC start date to be stored:', bookingStartDate.toISOString());
     
     // For pool bookings, ensure the end date is one day after start date
     // Pool bookings occupy only a single day, but we set the end date to the next day
@@ -180,7 +168,6 @@ export async function POST(request) {
       nextDay.setUTCDate(nextDay.getUTCDate() + 1);
       bookingEndDate = nextDay;
       bookingDuration = 1; // Pool bookings are always for 1 day
-      console.log('Pool booking - setting end date to one day after start date:', bookingEndDate.toISOString());
       
       // Ensure both startDate and endDate have consistent UTC time
       bookingStartDate.setUTCHours(0, 0, 0, 0);
@@ -188,7 +175,6 @@ export async function POST(request) {
     } else {
       // For villa bookings, use the provided end date - also normalized to midnight UTC
       const inputEndDate = new Date(endDate);
-      console.log('Original input end date:', inputEndDate.toISOString());
       
       bookingEndDate = new Date(Date.UTC(
         inputEndDate.getFullYear(),
@@ -196,7 +182,6 @@ export async function POST(request) {
         inputEndDate.getDate(),
         0, 0, 0, 0  // Set to midnight UTC
       ));
-      console.log('UTC end date to be stored:', bookingEndDate.toISOString());
       bookingDuration = duration;
     }
     
@@ -268,7 +253,7 @@ export async function POST(request) {
       const conflictingBookings = await Booking.find(conflictQuery);
       
       if (conflictingBookings.length > 0) {
-        console.log(`Found ${conflictingBookings.length} conflicting bookings`);
+        
         return NextResponse.json({ 
           success: false, 
           message: `Selected dates are not available. There are ${conflictingBookings.length} booking(s) that conflict with your requested dates.`
@@ -326,7 +311,6 @@ export async function POST(request) {
       if (agent && agent.email) {
         // Send booking confirmation email to the agent
         await sendBookingConfirmationEmail(booking, agent);
-        console.log('Booking confirmation email sent to agent:', agent.email);
       }
     } catch (emailError) {
       console.error('Error sending booking confirmation email:', emailError);

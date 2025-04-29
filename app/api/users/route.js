@@ -100,7 +100,6 @@ export async function POST(request) {
     // Send welcome email
     try {
       await sendWelcomeEmail(newUser);
-      console.log('Welcome email sent to:', email);
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);
       // Continue with the registration process even if email fails

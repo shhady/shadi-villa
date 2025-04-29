@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic';
 
 // Helper function to log headers and extract token
 const logRequestDetails = (request, method, id) => {
-  console.log(`${method} /api/bookings/${id} - Request received`);
+  
   try {
     const token = getTokenFromHeaders(request);
-    console.log('API Route - Token extracted:', token ? 'Yes, length: ' + token.length : 'No');
+
     return token;
   } catch (error) {
     console.error('Error extracting token:', error);
@@ -31,7 +31,6 @@ export async function GET(request, { params }) {
     const user = authenticateUser(request);
     
     if (!user) {
-      console.log(`GET /api/bookings/${id} - Authentication failed`);
       return NextResponse.json({ 
         success: false, 
         message: 'Authentication required' 
@@ -42,7 +41,6 @@ export async function GET(request, { params }) {
     const booking = await Booking.findById(id);
     
     if (!booking) {
-      console.log(`GET /api/bookings/${id} - Booking not found`);
       return NextResponse.json({ 
         success: false, 
         message: `Booking with ID ${id} not found` 
@@ -51,7 +49,6 @@ export async function GET(request, { params }) {
     
     // Check authorization: Admins can see all bookings, agents can only see their own
     if (user.role !== 'admin' && booking.agentId.toString() !== user.userId) {
-      console.log(`GET /api/bookings/${id} - Authorization failed: User is not admin and not the owner`);
       return NextResponse.json({ 
         success: false, 
         message: 'You are not authorized to view this booking' 
@@ -163,7 +160,6 @@ export async function DELETE(request, { params }) {
     const user = authenticateUser(request);
     
     if (!user) {
-      console.log(`DELETE /api/bookings/${id} - Authentication failed`);
       return NextResponse.json({ 
         success: false, 
         message: 'Authentication required' 
@@ -174,7 +170,6 @@ export async function DELETE(request, { params }) {
     const booking = await Booking.findById(id);
     
     if (!booking) {
-      console.log(`DELETE /api/bookings/${id} - Booking not found`);
       return NextResponse.json({ 
         success: false, 
         message: `Booking with ID ${id} not found` 
@@ -183,7 +178,6 @@ export async function DELETE(request, { params }) {
     
     // Check authorization: Admins can delete any booking, agents can only delete their own
     if (user.role !== 'admin' && booking.agentId.toString() !== user.userId) {
-      console.log(`DELETE /api/bookings/${id} - Authorization failed: User is not admin and not the owner`);
       return NextResponse.json({ 
         success: false, 
         message: 'You are not authorized to delete this booking' 
@@ -192,7 +186,6 @@ export async function DELETE(request, { params }) {
     
     // For non-rejected bookings, additional authorization checks
     if (booking.status !== 'rejected' && user.role !== 'admin') {
-      console.log(`DELETE /api/bookings/${id} - Authorization failed: Non-admin can only delete rejected bookings`);
       return NextResponse.json({ 
         success: false, 
         message: 'Agents can only delete rejected bookings. Please contact admin for other cases.' 
@@ -202,7 +195,6 @@ export async function DELETE(request, { params }) {
     // Delete booking
     await Booking.findByIdAndDelete(id);
     
-    console.log(`DELETE /api/bookings/${id} - Booking deleted successfully`);
     
     return NextResponse.json({
       success: true,

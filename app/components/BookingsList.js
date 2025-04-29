@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 import ShareButton from './ShareButton';
+import BookingEditForm from './BookingEditForm';
 
 const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
-  const { hasRole, getToken, api } = useAuth();
+  const { hasRole, getToken, api, getUserId } = useAuth();
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -16,6 +17,8 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsBooking, setDetailsBooking] = useState(null);
   const [lastStatusChange, setLastStatusChange] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState(null);
 
   // Add a utility function to safely access booking properties with improved type handling
   const safe = (booking, property, defaultValue = '') => {
@@ -318,6 +321,38 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
     setShowDetailsModal(true);
   };
 
+  // Handle edit booking
+  const handleEditBooking = (booking) => {
+    setEditingBooking(booking);
+    setShowEditModal(true);
+  };
+
+  // Handle booking update success
+  const handleBookingUpdated = (updatedBooking) => {
+    // Close the edit modal
+    setShowEditModal(false);
+    setEditingBooking(null);
+    
+    // Show success message
+    toast.success('Booking updated successfully');
+    
+    // Refresh the list
+    if (onRefresh) {
+      onRefresh();
+    }
+    
+    // If details modal is open with this booking, update it
+    if (detailsBooking && detailsBooking._id === updatedBooking._id) {
+      setDetailsBooking(updatedBooking);
+    }
+  };
+
+  // Check if the current user is the creator of the booking
+  const isBookingCreator = (booking) => {
+    const currentUserId = getUserId();
+    return booking.agentId && booking.agentId === currentUserId;
+  };
+
   if (!bookings || bookings.length === 0) {
     return (
       <div className="bg-white shadow rounded-lg p-6 text-center">
@@ -386,8 +421,25 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 </div>
                 
                 <div className="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
-                  {/* View Details Button */}
+                  {/* Edit Button - Show for admins or the agent who created the booking */}
+                  {(hasRole('admin') || isBookingCreator(booking)) && (
+                    <button
+                      onClick={() => handleEditBooking(booking)}
+                      disabled={actionLoading[booking._id]}
+                      className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                    >
+                      Edit
+                    </button>
+                  )}
                   
+                  {/* View Details Button */}
+                  <button
+                    onClick={() => handleViewDetails(booking)}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    View Details
+                  </button>
+
                   {/* Admin actions */}
                   {hasRole('admin') && booking.status === 'pending' && (
                     <>
@@ -407,13 +459,7 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={() => handleViewDetails(booking)}
-                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    View Details
-                  </button>
-
+                  
                   {/* Allow admin to change approved bookings to rejected */}
                   {hasRole('admin') && booking.status === 'approved' && (
                     <button
@@ -496,6 +542,22 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Booking Modal */}
+      {showEditModal && editingBooking && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg overflow-hidden shadow-xl max-w-4xl w-full">
+            <BookingEditForm
+              booking={editingBooking}
+              onClose={() => {
+                setShowEditModal(false);
+                setEditingBooking(null);
+              }}
+              onSuccess={handleBookingUpdated}
+            />
           </div>
         </div>
       )}
@@ -601,7 +663,19 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
               <div className="mt-6 flex justify-end">
                 {/* Admin action buttons in details modal */}
                 {hasRole('admin') && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mr-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mr-auto">
+                    {/* Edit button in details modal */}
+                    <button
+                      onClick={() => {
+                        setShowDetailsModal(false);
+                        handleEditBooking(detailsBooking);
+                      }}
+                      disabled={actionLoading[detailsBooking._id]}
+                      className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                    >
+                      Edit
+                    </button>
+                    
                     {detailsBooking.status !== 'approved' && (
                       <button
                         onClick={() => {
@@ -647,17 +721,32 @@ const BookingsList = ({ bookings, onStatusChange, onDelete, onRefresh }) => {
                     >
                       Delete
                     </button>
-                    <button
-                  type="button"
-                  onClick={() => setShowDetailsModal(false)}
-                  className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Close
-                </button>
                   </div>
                 )}
                 
-                
+                {/* Add Edit button for agent who created this booking */}
+                {!hasRole('admin') && isBookingCreator(detailsBooking) && (
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => {
+                        setShowDetailsModal(false);
+                        handleEditBooking(detailsBooking);
+                      }}
+                      disabled={actionLoading[detailsBooking._id]}
+                      className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                    >
+                      Edit
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailsModal(false)}
+                      className="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

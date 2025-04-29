@@ -34,7 +34,6 @@ export default function Bookings() {
       // Add status filter if active tab is not empty
       const url = activeTab ? `/api/bookings?status=${activeTab}` : '/api/bookings';
       
-      console.log('Fetching bookings with URL:', url);
       const response = await api.get(url, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -43,7 +42,6 @@ export default function Bookings() {
       
       if (response.data.success) {
         setBookings(response.data.data);
-        console.log(`Fetched ${response.data.data.length} bookings`);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);

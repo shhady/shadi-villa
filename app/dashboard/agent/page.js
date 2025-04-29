@@ -31,7 +31,6 @@ export default function AgentDashboard() {
         return;
       }
       
-      console.log('Fetching bookings with status:', activeTab);
       const response = await api.get(`/api/bookings?status=${activeTab}`, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -40,7 +39,6 @@ export default function AgentDashboard() {
       
       if (response.data.success) {
         setBookings(response.data.data);
-        console.log(`Fetched ${response.data.data.length} bookings`);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
